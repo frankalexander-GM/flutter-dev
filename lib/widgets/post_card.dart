@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/post.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import 'animations.dart';
 import 'avatar.dart';
 import 'console_screen.dart';
 
@@ -347,12 +348,15 @@ class _Actions extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _ActionButton(
-            icon: liked ? Icons.favorite : Icons.favorite_border,
-            active: liked,
-            activeColor: DevColors.likedRed,
-            label: '$likes',
-            onTap: onLike,
+          PopScale(
+            trigger: likes,
+            child: _ActionButton(
+              icon: liked ? Icons.favorite : Icons.favorite_border,
+              active: liked,
+              activeColor: DevColors.likedRed,
+              label: '$likes',
+              onTap: onLike,
+            ),
           ),
           const SizedBox(width: 4),
           _ActionButton(

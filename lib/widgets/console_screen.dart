@@ -171,21 +171,28 @@ class _ConfettiBurstState extends State<ConfettiBurst>
   )..forward();
 
   static final _rand = math.Random(42);
-  late final List<_Particle> _particles = List.generate(30, (i) {
-    final angle = _rand.nextDouble() * math.pi * 2;
-    final speed = 60 + _rand.nextDouble() * 130;
+  late final List<_Particle> _particles = List.generate(46, (i) {
+    // Reparto: mayoría sale hacia arriba en abanico, unas pocas caen rectas.
+    final upward = i % 5 != 0;
+    final angle = upward
+        ? -math.pi / 2 + (_rand.nextDouble() - 0.5) * 2.6
+        : _rand.nextDouble() * math.pi * 2;
+    final speed = 90 + _rand.nextDouble() * 210;
     final colors = const [
       DevColors.gold,
       DevColors.goldSoft,
       DevColors.cream,
       Color(0xFF7EF29A),
-      Color(0xFFDC7A44),
+      DevColors.primary,
+      DevColors.likedRed,
     ];
     return _Particle(
-      velocity: Offset(math.cos(angle) * speed, math.sin(angle) * speed - 90),
-      size: 3 + _rand.nextDouble() * 5,
+      velocity: Offset(math.cos(angle) * speed, math.sin(angle) * speed),
+      size: 3 + _rand.nextDouble() * 6,
       color: colors[_rand.nextInt(colors.length)],
-      spin: _rand.nextDouble() * 6 - 3,
+      spin: _rand.nextDouble() * 8 - 4,
+      // Retraso por partícula: la ráfaga "explota" en vez de salir de golpe.
+      delay: _rand.nextDouble() * 0.18,
     );
   });
 
@@ -225,11 +232,13 @@ class _Particle {
   final double size;
   final Color color;
   final double spin;
+  final double delay;
   const _Particle({
     required this.velocity,
     required this.size,
     required this.color,
     required this.spin,
+    required this.delay,
   });
 }
 
@@ -245,26 +254,32 @@ class _ConfettiPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const g = 420.0;
+    const g = 520.0; // gravedad
     for (final p in particles) {
+      // Tiempo local de la partícula (arranca tras su retraso).
+      final lt = ((t - p.delay) / (1 - p.delay)).clamp(0.0, 1.0);
+      if (lt <= 0) continue;
       final pos = Offset(
-        origin.dx + p.velocity.dx * t + (t * t) * 0 * 0,
-        origin.dy + p.velocity.dy * t + 0.5 * g * t * t,
+        origin.dx + p.velocity.dx * lt,
+        origin.dy + p.velocity.dy * lt + 0.5 * g * lt * lt,
       );
-      final alpha = (1 - t) * 255;
+      // Se apaga al final y también se desvanece un poco al principio.
+      final alpha = math.min(lt * 6, 1.0) * (1 - lt) * 255;
+      if (alpha <= 0) continue;
       final paint = Paint()
-        ..color = p.color.withValues(alpha: alpha)
+        ..color = p.color.withValues(alpha: alpha.clamp(0, 255) / 255)
         ..style = PaintingStyle.fill;
+
+      // Giro: la confeti "flota" alternando lado (como el confeti real).
+      final flutter = math.sin(lt * math.pi * 3 + p.spin) * 0.5;
       canvas.save();
       canvas.translate(pos.dx, pos.dy);
-      canvas.rotate(p.spin * t * 6);
+      canvas.rotate(p.spin * lt * 5);
+      // Aplasta en X alternando -> da sensación de papeleteo 3D.
+      final w = p.size * 1.7 * (0.35 + 0.65 * (flutter.abs()));
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: p.size * 1.6,
-            height: p.size,
-          ),
+          Rect.fromCenter(center: Offset.zero, width: w, height: p.size * 1.1),
           const Radius.circular(1),
         ),
         paint,

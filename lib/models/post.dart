@@ -64,8 +64,8 @@ final List<Post> mockPosts = [
     id: 'p1',
     author: const PostAuthor(username: 'dev_pixel', role: 'DEV'),
     content:
-        'Subimos la beta 0.4.2 de Pixel Dash 🕹️ Ahora con el modo arcade '
-        'infinito y mejoras de rendimiento. ¡Los devs ya pueden probarla!',
+        'Subimos la beta 0.4.2 de Pixel Dash. Ahora con el modo arcade '
+        'infinito y mejoras de rendimiento. Los devs ya pueden probarla!',
     createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
     type: PostType.beta,
     media: const [],
@@ -83,7 +83,7 @@ final List<Post> mockPosts = [
     id: 'p2',
     author: const PostAuthor(username: 'luna_dev', role: 'DEV'),
     content:
-        'Primera luz del nuevo escenario del proyecto Neon Drift 🌆 Todavía en '
+        'Primera luz del nuevo escenario del proyecto Neon Drift. Todavia en '
         'progreso, pero el ambiente nocturno ya se siente.',
     createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 20)),
     type: PostType.post,
@@ -95,8 +95,8 @@ final List<Post> mockPosts = [
     id: 'p3',
     author: const PostAuthor(username: 'raikoh', role: 'DEV'),
     content:
-        'Estamos en vivo jugando la beta de Código Rojo con el equipo 🔴 '
-        'Pasamos por acá un rato, ¡los esperamos!',
+        'Estamos en vivo jugando la beta de Codigo Rojo con el equipo. '
+        'Pasamos por aca un rato, los esperamos!',
     createdAt: DateTime.now().subtract(const Duration(minutes: 4)),
     type: PostType.stream,
     media: const [],
@@ -107,8 +107,8 @@ final List<Post> mockPosts = [
     id: 'p4',
     author: const PostAuthor(username: 'nick_og'),
     content:
-        '¿A quién más le pasa que prueba la beta y se le va el día entero? '
-        'Esto es adictivo 😅',
+        'A quien mas le pasa que prueba la beta y se le va el dia entero? '
+        'Esto es adictivo!',
     createdAt: DateTime.now().subtract(const Duration(hours: 3)),
     type: PostType.post,
     media: const [],

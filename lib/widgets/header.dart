@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'animations.dart';
 import 'avatar.dart';
 
 /// Cabecera de DevPlay — calca el Header de la web: menú, logo con
@@ -38,19 +39,21 @@ class DevHeader extends StatelessWidget {
           // Logo
           Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              Sheen(
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    border: Border.all(color: DevColors.gold35),
                   ),
-                  border: Border.all(color: DevColors.gold35),
+                  child: const Icon(Icons.sports_esports_rounded, size: 20, color: DevColors.cream),
                 ),
-                child: const Icon(Icons.sports_esports_rounded, size: 20, color: DevColors.cream),
               ),
               const SizedBox(width: 8),
               Text(

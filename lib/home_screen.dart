@@ -4,10 +4,11 @@ import 'models/post.dart';
 import 'theme.dart';
 import 'widgets/feed_view.dart';
 import 'widgets/header.dart';
+import 'widgets/hero_banner.dart';
 import 'widgets/hero_ticker.dart';
 
 /// Pantalla principal: header + cinta de juegos + feed + barra inferior +
-/// dock de crear (igual estructura que la web).
+/// dock de crear (misma estructura que la web).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -29,23 +30,26 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: DevColors.background,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                const DevHeader(),
-                const HeroTicker(games: mockGames),
-                Expanded(child: FeedView(posts: mockPosts)),
-              ],
+            const DevHeader(),
+            // Hero pixel-art: mando retro, título, chips y cinta.
+            // Margen para que respire entre el header y el ticker.
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: HeroBanner(
+                onCreateTap: () => _openCreate(context),
+                onGameTap: (name) =>
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('$name - pronto')),
+                    ),
+              ),
             ),
-            // Dock de crear (bottom-center), como el CreateDock de la web.
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 14,
-              child: Center(child: _CreateDock()),
-            ),
+            const SizedBox(height: 12),
+            const HeroTicker(games: mockGames),
+            Expanded(child: FeedView(posts: mockPosts)),
           ],
         ),
       ),
@@ -100,89 +104,45 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Botón "Crear" flotante (bottom-center) con menú de opciones.
-class _CreateDock extends StatelessWidget {
-  Future<void> _open(BuildContext context) async {
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: DevColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+/// Menú de creación (hoja inferior) — lo abre el botón Crear del hero.
+Future<void> _openCreate(BuildContext context) async {
+  final action = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: DevColors.card,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+    ),
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 6),
+          Container(
+            width: 44,
+            height: 4,
+            decoration: BoxDecoration(
+              color: DevColors.muted,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Crear contenido', style: DevTheme.display(size: 16)),
+            ),
+          ),
+          const _Option(icon: Icons.sports_esports_rounded, iconColor: DevColors.amber, label: 'Subir Beta'),
+          const _Option(icon: Icons.videocam_outlined, iconColor: DevColors.wine, label: 'Subir Video'),
+          const _Option(icon: Icons.bar_chart_rounded, iconColor: DevColors.olive, label: 'Encuesta'),
+          const SizedBox(height: 12),
+        ],
       ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 6),
-            Container(
-              width: 44,
-              height: 4,
-              decoration: BoxDecoration(
-                color: DevColors.muted,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Crear contenido',
-                  style: DevTheme.display(size: 16),
-                ),
-              ),
-            ),
-            _Option(icon: Icons.sports_esports_rounded, iconColor: DevColors.amber, label: 'Subir Beta'),
-            _Option(icon: Icons.videocam_outlined, iconColor: DevColors.wine, label: 'Subir Video'),
-            _Option(icon: Icons.bar_chart_rounded, iconColor: DevColors.olive, label: 'Encuesta'),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
-    );
-    if (action != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$action — pronto 😉')));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _open(context),
-      child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 22),
-        decoration: BoxDecoration(
-          gradient: DevTheme.btnGradient(),
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            BoxShadow(
-              color: DevColors.gold.withValues(alpha: 0.4),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-            BoxShadow(
-              color: DevColors.background.withValues(alpha: 0.6),
-              blurRadius: 4,
-              offset: const Offset(0, 0),
-              spreadRadius: -2,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.add_rounded, size: 22, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(
-              'Crear',
-              style: DevTheme.body(size: 14, w: FontWeight.w700, color: Colors.white),
-            ),
-          ],
-        ),
-      ),
-    );
+    ),
+  );
+  if (action != null && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$action - pronto')));
   }
 }
 

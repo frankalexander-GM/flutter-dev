@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Tokens de diseño de DevPlay — mismos valores que la web (rama `visual`
 /// del backend): paleta "papel, tinta y filetes" en oscuro, convertida de
@@ -14,7 +13,6 @@ abstract final class DevColors {
   static const primary = Color(0xFFDC7A44); // oklch(0.68 0.14 48) ámbar
   static const primaryFg = Color(0xFF180C06);
   static const secondary = Color(0xFF3C2B1F);
-  static const secondaryFg = Color(0xFFEEE5D3);
   static const muted = Color(0xFF3B2A1E);
   static const mutedFg = Color(0xFFA79581);
   static const accent = Color(0xFF4F2F1D);
@@ -45,17 +43,24 @@ abstract final class DevColors {
   static const gold35 = Color(0x59D9A441);
   static const gold40 = Color(0x66D9A441);
   static const gold50 = Color(0x80D9A441);
+
+  // ── Gradientes predefinidos ──
+  static LinearGradient btnGradient() => LinearGradient(
+        colors: [Color(0xFFE08A52), Color(0xFFC05E2E)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
 }
 
 /// Helpers de estilo compartidos por todos los widgets.
 abstract final class DevTheme {
-  // ── Tipografías (mismas familias que la web) ──────────────
+  // ── Tipografías (usando fuentes del sistema para evitar errores de Noto en release) ──
   static TextStyle display({
     double size = 20,
     FontWeight w = FontWeight.w700,
     Color color = DevColors.foreground,
   }) =>
-      GoogleFonts.fraunces(fontSize: size, fontWeight: w, color: color);
+      TextStyle(fontSize: size, fontWeight: w, color: color, fontFamily: 'Georgia');
 
   static TextStyle body({
     double size = 14,
@@ -63,26 +68,26 @@ abstract final class DevTheme {
     Color color = DevColors.foreground,
     double? height,
   }) =>
-      GoogleFonts.bitter(
-          fontSize: size, fontWeight: w, color: color, height: height);
+      TextStyle(fontSize: size, fontWeight: w, color: color, height: height, fontFamily: 'Segoe UI');
 
   static TextStyle mono({
     double size = 11,
     FontWeight w = FontWeight.w400,
     Color color = DevColors.consoleGreen,
   }) =>
-      GoogleFonts.jetBrainsMono(fontSize: size, fontWeight: w, color: color);
+      TextStyle(fontSize: size, fontWeight: w, color: color, fontFamily: 'Consolas');
 
   static TextStyle labelCaps({
     double size = 10,
     FontWeight w = FontWeight.w700,
     Color color = DevColors.mutedFg,
   }) =>
-      GoogleFonts.bitter(
+      TextStyle(
           fontSize: size,
           fontWeight: w,
           color: color,
-          letterSpacing: 1.4);
+          letterSpacing: 1.4,
+          fontFamily: 'Segoe UI');
 
   // ── Superficies (glass-card / glass-strong de la web) ─────
   static BoxDecoration glass({double radius = 8, Color? color}) =>
@@ -113,45 +118,5 @@ abstract final class DevTheme {
       );
 
   /// Botón "degradado" primario → acento, como .btn-gradient-primary.
-  static LinearGradient btnGradient() => const LinearGradient(
-        colors: [Color(0xFFE08A52), Color(0xFFC05E2E)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-}
-
-ThemeData buildDevPlayTheme() {
-  final scheme = ColorScheme.dark(
-    primary: DevColors.primary,
-    onPrimary: DevColors.primaryFg,
-    secondary: DevColors.secondary,
-    onSecondary: DevColors.secondaryFg,
-    error: DevColors.destructive,
-    onError: const Color(0xFFFFFFFF),
-    surface: DevColors.card,
-    onSurface: DevColors.foreground,
-    surfaceContainerHighest: DevColors.muted,
-    onSurfaceVariant: DevColors.mutedFg,
-    outline: DevColors.border,
-    outlineVariant: DevColors.border,
-  );
-
-  return ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-    colorScheme: scheme,
-    scaffoldBackgroundColor: DevColors.background,
-    canvasColor: DevColors.background,
-    splashFactory: InkSparkle.splashFactory,
-    textTheme: TextTheme(
-      bodyMedium: DevTheme.body(),
-      bodySmall: DevTheme.body(size: 12),
-      titleMedium: DevTheme.body(size: 16, w: FontWeight.w600),
-      labelMedium: DevTheme.labelCaps(),
-    ),
-    dividerTheme: const DividerThemeData(
-      color: DevColors.border,
-      thickness: 1,
-    ),
-  );
+  static LinearGradient btnGradient() => DevColors.btnGradient();
 }

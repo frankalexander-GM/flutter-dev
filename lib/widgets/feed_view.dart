@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/post.dart';
 import '../theme.dart';
+import 'animations.dart';
 import 'console_screen.dart';
 import 'glass_card.dart';
 import 'post_card.dart';
@@ -62,7 +63,12 @@ class _FeedViewState extends State<FeedView> {
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 150),
                   itemCount: posts.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => PostCard(post: posts[i]),
+                  itemBuilder: (_, i) => StaggeredEntrance(
+                    index: i,
+                    child: i == 0
+                        ? Sheen(child: PostCard(post: posts[i]))
+                        : PostCard(post: posts[i]),
+                  ),
                 ),
         ),
       ],
@@ -91,12 +97,19 @@ class _FilterTab extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
         height: 38,
         decoration: BoxDecoration(
           gradient: active ? DevTheme.btnGradient() : null,
           borderRadius: BorderRadius.circular(6),
           boxShadow: active
-              ? [BoxShadow(color: DevColors.gold.withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 2))]
+              ? [
+                  BoxShadow(
+                    color: DevColors.gold.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
               : null,
         ),
         child: Row(
@@ -104,9 +117,10 @@ class _FilterTab extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 6),
-            Text(
-              label,
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
               style: DevTheme.body(size: 12, w: FontWeight.w600, color: color),
+              child: Text(label),
             ),
           ],
         ),
@@ -126,7 +140,9 @@ class _Empty extends StatelessWidget {
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
-            const Icon(Icons.radio_rounded, size: 44, color: DevColors.mutedFg),
+            const LivePulse(
+              child: Icon(Icons.radio_rounded, size: 44, color: DevColors.likedRed),
+            ),
             const SizedBox(height: 12),
             Text('No hay directos ahora mismo', style: DevTheme.body(size: 16, w: FontWeight.w600)),
             const SizedBox(height: 6),
