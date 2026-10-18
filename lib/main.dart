@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'providers/auth_provider.dart';
+import 'screens/login_screen.dart';
 import 'home_screen.dart';
 import 'theme.dart';
 
@@ -7,69 +10,40 @@ void main() {
   runApp(const DevPlayApp());
 }
 
-/// Raíz de la app: tema DevPlay (oscuro, "papel, tinta y filetes") y la
-/// pantalla principal. El tema aplica la paleta cálida oscura y los glass
-/// cards que calcan el diseño web de la rama `visual` del backend.
 class DevPlayApp extends StatelessWidget {
   const DevPlayApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'DevPlay',
-      debugShowCheckedModeBanner: false,
-      // Tema aplicado desde theme.dart — paleta y tipografía del diseño web.
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: DevColors.background,
-        colorScheme: const ColorScheme.dark(
-          primary: DevColors.primary,
-          onPrimary: DevColors.primaryFg,
-          secondary: DevColors.secondary,
-          onSecondary: DevColors.foreground,
-          surface: DevColors.card,
-          onSurface: DevColors.foreground,
-          error: DevColors.destructive,
-          onError: Colors.white,
-          outline: DevColors.border,
-        ),
-        // Tipografía sin GoogleFonts para evitar el error de Noto fonts en release.
-        // Usamos las fuentes del sistema (serif para display, sans para body).
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w700,
-            color: DevColors.foreground,
-            fontFamily: 'Georgia',
-          ),
-          displayMedium: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: DevColors.foreground,
-            fontFamily: 'Georgia',
-          ),
-          bodyMedium: TextStyle(
-            fontSize: 14,
-            height: 1.4,
-            color: DevColors.foreground,
-            fontFamily: 'Segoe UI',
-          ),
-          bodySmall: TextStyle(
-            fontSize: 12,
-            color: DevColors.mutedFg,
-            fontFamily: 'Segoe UI',
-          ),
-          labelMedium: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.4,
-            color: DevColors.mutedFg,
-            fontFamily: 'Consolas',
-          ),
-        ),
+    return ChangeNotifierProvider(
+      create: (_) => AuthProvider()..checkAuth(),
+      child: MaterialApp(
+        title: 'DevPlay',
+        debugShowCheckedModeBanner: false,
+        theme: buildDevPlayTheme(),
+        home: const AuthGate(),
       ),
-      home: const HomeScreen(),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (auth.isAuthenticated) {
+          return const HomeScreen();
+        }
+        return const LoginScreen();
+      },
     );
   }
 }

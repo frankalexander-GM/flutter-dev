@@ -13,6 +13,7 @@ abstract final class DevColors {
   static const primary = Color(0xFFDC7A44); // oklch(0.68 0.14 48) ámbar
   static const primaryFg = Color(0xFF180C06);
   static const secondary = Color(0xFF3C2B1F);
+  static const secondaryFg = Color(0xFFEEE5D3);
   static const muted = Color(0xFF3B2A1E);
   static const mutedFg = Color(0xFFA79581);
   static const accent = Color(0xFF4F2F1D);
@@ -119,4 +120,63 @@ abstract final class DevTheme {
 
   /// Botón "degradado" primario → acento, como .btn-gradient-primary.
   static LinearGradient btnGradient() => DevColors.btnGradient();
+}
+
+/// ThemeData de DevPlay — oscuro "papel, tinta y filetes", con la paleta y la
+/// escala tipográfica de la web (rama `visual` del backend).
+///
+/// Fuentes del sistema (Georgia / Segoe UI / Consolas) a propósito: con
+/// google_fonts en build web release salían errores de "Noto fonts" al pintar
+/// caracteres que no estaban en la fuente descargada.
+ThemeData buildDevPlayTheme() {
+  final scheme = ColorScheme.dark(
+    primary: DevColors.primary,
+    onPrimary: DevColors.primaryFg,
+    secondary: DevColors.secondary,
+    onSecondary: DevColors.secondaryFg,
+    error: DevColors.destructive,
+    onError: Colors.white,
+    surface: DevColors.card,
+    onSurface: DevColors.foreground,
+    surfaceContainerHighest: DevColors.muted,
+    onSurfaceVariant: DevColors.mutedFg,
+    outline: DevColors.border,
+    outlineVariant: DevColors.border,
+  );
+
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    colorScheme: scheme,
+    scaffoldBackgroundColor: DevColors.background,
+    canvasColor: DevColors.background,
+    splashFactory: InkSparkle.splashFactory,
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(
+        fontFamily: 'Segoe UI',
+        fontSize: 14,
+        height: 1.4,
+        color: DevColors.foreground,
+      ),
+      bodySmall: TextStyle(
+        fontFamily: 'Segoe UI',
+        fontSize: 12,
+        color: DevColors.mutedFg,
+      ),
+      titleMedium: TextStyle(
+        fontFamily: 'Segoe UI',
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: DevColors.foreground,
+      ),
+      labelMedium: TextStyle(
+        fontFamily: 'Consolas',
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.4,
+        color: DevColors.mutedFg,
+      ),
+    ),
+    dividerTheme: const DividerThemeData(color: DevColors.border, thickness: 1),
+  );
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/post.dart';
+import '../services/post_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import 'animations.dart';
@@ -23,19 +24,40 @@ class _PostCardState extends State<PostCard> {
   late int _likes = widget.post.likesCount;
   bool _burst = false;
   int _burstTick = 0;
+  bool _liking = false;
 
-  void _toggleLike() {
+  /// `POST /posts/{id}/likes` → `{active, count}` (toggle real en la API).
+  Future<void> _toggleLike() async {
+    if (_liking) return;
+    final wasLiked = _liked;
     setState(() {
-      if (_liked) {
-        _liked = false;
-        _likes--;
-      } else {
-        _liked = true;
-        _likes++;
+      _liked = !wasLiked;
+      _likes = _likes + (wasLiked ? -1 : 1);
+      if (!wasLiked) {
         _burstTick++;
         _burst = true;
       }
     });
+    _liking = true;
+    try {
+      final result = await PostService.toggleLike(widget.post.id);
+      if (!mounted) return;
+      setState(() {
+        _liked = result['active'] as bool? ?? _liked;
+        _likes = result['count'] as int? ?? _likes;
+      });
+    } catch (_) {
+      // Revierte el optimista si la API falló (p. ej. invitado).
+      if (mounted) {
+        setState(() {
+          _liked = wasLiked;
+          _likes = widget.post.likesCount;
+          _burst = false;
+        });
+      }
+    } finally {
+      _liking = false;
+    }
   }
 
   @override
@@ -108,12 +130,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDev = post.author.role == 'DEV';
+    final author = post.author;
+    final username = author?.username ?? 'anónimo';
+    final isDev = author?.role == 'DEV';
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
       child: Row(
         children: [
-          UserAvatar(username: post.author.username, avatar: post.author.avatar, size: 40),
+          UserAvatar(username: username, avatar: author?.avatar, size: 40),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -123,7 +147,7 @@ class _Header extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        post.author.username,
+                        username,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: DevTheme.body(size: 14, w: FontWeight.w600),
@@ -313,7 +337,7 @@ class _BetaSection extends StatelessWidget {
               border: Border.all(color: DevColors.gold40),
             ),
             child: Text(
-              beta.version,
+              beta.version ?? '',
               style: DevTheme.body(size: 11, w: FontWeight.w700, color: DevColors.goldSoft),
             ),
           ),
