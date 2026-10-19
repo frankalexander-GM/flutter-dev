@@ -5,18 +5,27 @@ import '../providers/auth_provider.dart';
 import '../theme.dart';
 import 'avatar.dart';
 
-/// Cabecera de DevPlay — logo, buscador, campana con badge real de no
-/// leídas y avatar del usuario. El menú lateral hoy expone cerrar sesión.
+/// Cabecera de DevPlay — PRD 1.1
+///
+/// - Logo DevPlay
+/// - SearchBar: bg #2C231E, border #332722, hint #A0938C
+/// - Campana notificaciones con badge
+/// - Avatar usuario
+/// - Menú hamburguesa (móvil) / opciones (desktop)
 class DevHeader extends StatelessWidget {
   final VoidCallback? onNotificationsTap;
   final VoidCallback? onLogout;
+  final VoidCallback? onMenuTap;
   final int unreadCount;
+  final bool showMenu;
 
   const DevHeader({
     super.key,
     this.onNotificationsTap,
     this.onLogout,
+    this.onMenuTap,
     this.unreadCount = 0,
+    this.showMenu = true,
   });
 
   @override
@@ -27,36 +36,23 @@ class DevHeader extends StatelessWidget {
       decoration: const BoxDecoration(
         color: DevColors.card,
         border: Border(
-          bottom: BorderSide(color: DevColors.border, width: 3),
+          bottom: BorderSide(color: DevColors.border, width: 1),
         ),
         boxShadow: [
-          BoxShadow(color: Color(0x4D000000), blurRadius: 12, offset: Offset(0, 2)),
+          BoxShadow(color: Color(0x33000000), blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Row(
         children: [
-          // Menu lateral
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.menu_rounded, size: 22),
-            color: DevColors.card,
-            onSelected: (value) {
-              if (value == 'logout') onLogout?.call();
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    const Icon(Icons.logout_rounded,
-                        size: 18, color: DevColors.destructive),
-                    const SizedBox(width: 10),
-                    Text('Cerrar sesion',
-                        style: DevTheme.body(size: 14)),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          // Menú lateral / Drawer
+          if (showMenu)
+            IconButton(
+              icon: const Icon(Icons.menu_rounded, size: 24, color: DevColors.foreground),
+              onPressed: onMenuTap,
+              tooltip: 'Menú',
+            )
+          else
+            const SizedBox(width: 48),
           const SizedBox(width: 2),
           // Logo
           Row(
@@ -73,42 +69,39 @@ class DevHeader extends StatelessWidget {
                   ),
                   border: Border.all(color: DevColors.gold35),
                 ),
-                child: const Icon(Icons.sports_esports_rounded,
-                    size: 20, color: DevColors.cream),
+                child: const Icon(Icons.sports_esports_rounded, size: 20, color: DevColors.cream),
               ),
               const SizedBox(width: 8),
               Text(
                 'DevPlay',
-                style: DevTheme.display(size: 20)
-                    .copyWith(letterSpacing: -0.5),
+                style: DevTheme.display(size: 20).copyWith(letterSpacing: -0.5),
               ),
             ],
           ),
           const SizedBox(width: 12),
-          // Buscador
+          // Buscador — PRD: bg #2C231E, border #332722, hint #A0938C
           Expanded(
             child: Container(
               height: 36,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: DevColors.cardRaised,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: DevColors.border),
+                color: DevColors.cardRaised, // #2C231E
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: DevColors.border), // #332722
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.search_rounded,
-                      size: 18, color: DevColors.mutedFg),
-                  SizedBox(width: 8),
+                  const Icon(Icons.search_rounded, size: 18, color: DevColors.mutedFg),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'Buscar juegos, devs, betas...',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: DevColors.mutedFg,
-                        fontSize: 13,
-                        fontStyle: FontStyle.italic,
+                    child: TextField(
+                      style: DevTheme.body(size: 13, color: DevColors.foreground),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar juegos, devs, betas...',
+                        hintStyle: DevTheme.bodySecondary(size: 13, color: DevColors.mutedFg),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
                   ),
@@ -124,15 +117,13 @@ class DevHeader extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications_none_rounded,
-                    size: 24, color: DevColors.foreground),
+                const Icon(Icons.notifications_none_rounded, size: 24, color: DevColors.foreground),
                 if (unreadCount > 0)
                   Positioned(
                     right: -8,
                     top: -6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                             colors: [DevColors.wine, Color(0xFFB85F3A)]),

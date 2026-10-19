@@ -49,4 +49,20 @@ class Beta {
         downloads: json['downloads'] as int? ?? 0,
         createdAt: DateTime.parse(json['createdAt'] as String),
       );
+
+  Beta copyWith({int? downloads}) => Beta(
+        id: id,
+        postId: postId,
+        title: title,
+        description: description,
+        downloadType: downloadType,
+        betaStatus: betaStatus,
+        externalUrl: externalUrl,
+        fileUrl: fileUrl,
+        genre: genre,
+        version: version,
+        coverImage: coverImage,
+        downloads: downloads ?? this.downloads,
+        createdAt: createdAt,
+      );
 }

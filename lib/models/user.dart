@@ -2,6 +2,8 @@
 /// FastAPI (`UserMe`, `ProfileUser`, `FollowListUser`).
 library;
 
+import 'post.dart';
+
 /// `UserMe` — 100% snake_case. Devuelto por `/auth/me`, `/users/me` y como
 /// `user` del login.
 class UserMe {
@@ -157,5 +159,66 @@ class FollowUser {
         followersCount: json['followersCount'] as int? ?? 0,
         postsCount: json['postsCount'] as int? ?? 0,
         followedAt: DateTime.parse(json['followedAt'] as String),
+      );
+}
+
+/// Respuesta de `GET /users/me/bookmarks` — lista de posts guardados.
+class BookmarkListResponse {
+  final List<Post> posts;
+
+  const BookmarkListResponse({required this.posts});
+
+  factory BookmarkListResponse.fromJson(Map<String, dynamic> json) =>
+      BookmarkListResponse(
+        posts: (json['posts'] as List? ?? [])
+            .map((e) => Post.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+/// Respuesta de `GET /users/me/achievements`.
+class AchievementsResponse {
+  final List<Achievement> achievements;
+
+  const AchievementsResponse({required this.achievements});
+
+  factory AchievementsResponse.fromJson(Map<String, dynamic> json) =>
+      AchievementsResponse(
+        achievements: (json['achievements'] as List? ?? [])
+            .map((e) => Achievement.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+/// Logro individual.
+class Achievement {
+  final String id;
+  final String name;
+  final String description;
+  final String icon;
+  final String rarity; // common, rare, epic, legendary
+  final DateTime? unlockedAt;
+  final bool isUnlocked;
+
+  const Achievement({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.icon,
+    required this.rarity,
+    this.unlockedAt,
+    required this.isUnlocked,
+  });
+
+  factory Achievement.fromJson(Map<String, dynamic> json) => Achievement(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        description: json['description'] as String,
+        icon: json['icon'] as String,
+        rarity: json['rarity'] as String? ?? 'common',
+        unlockedAt: json['unlocked_at'] != null
+            ? DateTime.parse(json['unlocked_at'] as String)
+            : null,
+        isUnlocked: json['is_unlocked'] as bool? ?? false,
       );
 }

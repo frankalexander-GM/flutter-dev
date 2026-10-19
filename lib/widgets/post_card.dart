@@ -4,448 +4,426 @@ import '../models/post.dart';
 import '../services/post_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
-import 'animations.dart';
 import 'avatar.dart';
-import 'console_screen.dart';
 
-/// Tarjeta de publicación de DevPlay — calca la PostCard de la web:
-/// cabecera con autor, contenido, media, sección de beta y barra de
-/// acciones (like con confeti, comentarios, descargas, compartir).
+/// Tarjeta de publicación de DevPlay.
+///
+/// Reutilizable en Inicio, Descubrir y Perfil. Las interacciones (like,
+/// guardar, compartir) se envían al backend vía [PostService] con actualización
+/// optimista y reconciliación con la respuesta del servidor.
 class PostCard extends StatefulWidget {
   final Post post;
-  const PostCard({super.key, required this.post});
+  final bool compact;
+  final VoidCallback? onCommentTap;
+  final VoidCallback? onShareTap;
+  final VoidCallback? onSaveTap;
+  final VoidCallback? onProfileTap;
+  final void Function(String)? onGameTap;
+
+  const PostCard({
+    super.key,
+    required this.post,
+    this.compact = false,
+    this.onCommentTap,
+    this.onShareTap,
+    this.onSaveTap,
+    this.onProfileTap,
+    this.onGameTap,
+  });
 
   @override
   State<PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard> {
+class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
   late bool _liked = widget.post.liked;
   late int _likes = widget.post.likesCount;
-  bool _burst = false;
-  int _burstTick = 0;
-  bool _liking = false;
+  late int _shares = widget.post.sharesCount;
+  late bool _bookmarked = widget.post.bookmarked;
+  late bool _shared = widget.post.shared;
+  bool _busy = false;
 
-  /// `POST /posts/{id}/likes` → `{active, count}` (toggle real en la API).
+  late final AnimationController _likeController;
+  late final Animation<double> _likeScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _likeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+    _likeScale = Tween<double>(begin: 1.0, end: 1.25).animate(
+      CurvedAnimation(parent: _likeController, curve: Curves.easeOutBack),
+    );
+  }
+
+  @override
+  void dispose() {
+    _likeController.dispose();
+    super.dispose();
+  }
+
+  static String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays >= 30) return '${diff.inDays ~/ 30}m';
+    if (diff.inDays > 0) return '${diff.inDays}d';
+    if (diff.inHours > 0) return '${diff.inHours}h';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}min';
+    return 'ahora';
+  }
+
   Future<void> _toggleLike() async {
-    if (_liking) return;
     final wasLiked = _liked;
     setState(() {
-      _liked = !wasLiked;
-      _likes = _likes + (wasLiked ? -1 : 1);
-      if (!wasLiked) {
-        _burstTick++;
-        _burst = true;
-      }
+      _liked = !_liked;
+      _likes += _liked ? 1 : -1;
     });
-    _liking = true;
+    if (_liked) _likeController.forward(from: 0.0);
     try {
-      final result = await PostService.toggleLike(widget.post.id);
+      final res = await PostService.toggleLike(widget.post.id);
       if (!mounted) return;
       setState(() {
-        _liked = result['active'] as bool? ?? _liked;
-        _likes = result['count'] as int? ?? _likes;
+        _liked = res['active'] as bool? ?? _liked;
+        _likes = res['count'] as int? ?? _likes;
       });
     } catch (_) {
-      // Revierte el optimista si la API falló (p. ej. invitado).
-      if (mounted) {
-        setState(() {
-          _liked = wasLiked;
-          _likes = widget.post.likesCount;
-          _burst = false;
-        });
-      }
+      if (!mounted) return;
+      // Revertir si el backend rechaza (p. ej. sin sesión).
+      setState(() {
+        _liked = wasLiked;
+        _likes += wasLiked ? 1 : -1;
+      });
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    if (_busy) return;
+    _busy = true;
+    final wasSaved = _bookmarked;
+    setState(() => _bookmarked = !_bookmarked);
+    widget.onSaveTap?.call();
+    try {
+      final res = await PostService.toggleSave(
+        itemId: widget.post.id,
+        type: SavedItemType.post,
+      );
+      if (!mounted) return;
+      setState(() => _bookmarked = res['active'] as bool? ?? _bookmarked);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _bookmarked = wasSaved);
     } finally {
-      _liking = false;
+      _busy = false;
+    }
+  }
+
+  Future<void> _toggleShare() async {
+    if (_busy) return;
+    _busy = true;
+    final wasShared = _shared;
+    setState(() {
+      _shared = !_shared;
+      _shares += _shared ? 1 : -1;
+    });
+    widget.onShareTap?.call();
+    try {
+      final res = await PostService.toggleShare(widget.post.id);
+      if (!mounted) return;
+      setState(() {
+        _shared = res['active'] as bool? ?? _shared;
+        _shares = res['count'] as int? ?? _shares;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _shared = wasShared;
+        _shares += wasShared ? 1 : -1;
+      });
+    } finally {
+      _busy = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final post = widget.post;
-    return LayoutBuilder(
-      builder: (context, cons) {
-        // Origen del confeti: desde el corazón (barra de acciones).
-        final origin = Offset(30, cons.maxHeight - 26);
-        return Stack(
-          children: [
-            Container(
-              decoration: DevTheme.glass(radius: 8),
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _Header(post: post),
-                  if (post.content.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        post.content,
-                        style: DevTheme.body(size: 14, height: 1.4),
-                      ),
+    final compact = widget.compact;
+    final author = post.author;
+    final username = author?.username ?? 'devplayito';
+
+    // Cover: media propia o portada del juego adjunto.
+    final cover = post.media.isNotEmpty && post.media.first.url.isNotEmpty
+        ? post.media.first.url
+        : post.game?.coverUrl;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: compact ? DevColors.cardRaised : DevColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DevColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (cover != null)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.network(
+                cover,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                errorBuilder: (_, _, _) => Container(
+                  color: DevColors.muted,
+                  child: Icon(
+                    Icons.image_rounded,
+                    color: DevColors.mutedFg,
+                    size: compact ? 28 : 36,
+                  ),
+                ),
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.all(compact ? 10 : 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(username, author),
+                const SizedBox(height: 10),
+                if (post.title.isNotEmpty)
+                  Text(
+                    post.title,
+                    style: DevTheme.body(
+                      size: compact ? 13 : 15,
+                      w: FontWeight.w700,
                     ),
-                  if (post.media.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _MediaGrid(media: post.media),
-                  ],
-                  if (post.type == PostType.beta && post.beta != null) ...[
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: _BetaSection(beta: post.beta!),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  _Actions(
-                    liked: _liked,
-                    likes: _likes,
-                    comments: post.commentsCount,
-                    downloads: post.beta?.downloads,
-                    hasBeta: post.type == PostType.beta,
-                    onLike: _toggleLike,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (post.content.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    post.content,
+                    style: DevTheme.bodySecondary(size: compact ? 11 : 12.5),
+                    maxLines: compact ? 2 : 4,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ),
-            ),
-            if (_burst)
-              Positioned.fill(
-                child: ConfettiBurst(
-                  key: ValueKey(_burstTick),
-                  tick: _burstTick,
-                  origin: origin,
-                  onDone: () => setState(() => _burst = false),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  final Post post;
-  const _Header({required this.post});
-
-  @override
-  Widget build(BuildContext context) {
-    final author = post.author;
-    final username = author?.username ?? 'anónimo';
-    final isDev = author?.role == 'DEV';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
-      child: Row(
-        children: [
-          UserAvatar(username: username, avatar: author?.avatar, size: 40),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        username,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: DevTheme.body(size: 14, w: FontWeight.w600),
-                      ),
-                    ),
-                    if (isDev) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: DevColors.secondary,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: DevColors.border),
-                        ),
-                        child: Text(
-                          'DEV',
-                          style: DevTheme.labelCaps(size: 8, color: DevColors.foreground),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  timeAgo(post.createdAt),
-                  style: DevTheme.body(size: 12, color: DevColors.mutedFg),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            // Solo visible cuando el autor es el usuario actual (en la maqueta se oculta)
-            onPressed: null,
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.more_horiz_rounded, size: 20, color: DevColors.mutedFg),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MediaGrid extends StatelessWidget {
-  final List<PostMedia> media;
-  const _MediaGrid({required this.media});
-
-  @override
-  Widget build(BuildContext context) {
-    final one = media.length == 1;
-    return SizedBox(
-      height: one ? 200 : 150,
-      width: double.infinity,
-      child: Row(
-        children: [
-          for (var i = 0; i < media.length; i++) ...[
-            if (i > 0) const SizedBox(width: 4),
-            Expanded(child: _MediaPlaceholder(media: media[i])),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MediaPlaceholder extends StatelessWidget {
-  final PostMedia media;
-  const _MediaPlaceholder({required this.media});
-
-  @override
-  Widget build(BuildContext context) {
-    final isVideo = media.kind == 'video';
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isVideo
-              ? const [Color(0xFF3C1F1F), Color(0xFF241610)]
-              : const [Color(0xFF4A3520), Color(0xFF2E1F15)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // cuadrícula pixel sutil (textura)
-          CustomPaint(
-            size: Size.infinite,
-            painter: _GridPainter(color: DevColors.white08),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isVideo ? Icons.videocam_outlined : Icons.image_outlined,
-                size: 40,
-                color: DevColors.gold.withValues(alpha: 0.7),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                isVideo ? 'video' : 'imagen',
-                style: DevTheme.labelCaps(size: 10, color: DevColors.mutedFg),
-              ),
-            ],
-          ),
-          if (isVideo)
-            Container(
-              width: 44,
-              height: 30,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: DevColors.white15),
-              ),
-              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GridPainter extends CustomPainter {
-  final Color color;
-  const _GridPainter({required this.color});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-    const step = 24.0;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _GridPainter old) => color != old.color;
-}
-
-class _BetaSection extends StatelessWidget {
-  final BetaInfo beta;
-  const _BetaSection({required this.beta});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: DevColors.cardRaised,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0x33DC7A44), width: 2),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: DevColors.primary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.sports_esports_rounded, size: 26, color: DevColors.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(beta.title, style: DevTheme.body(size: 14, w: FontWeight.w700)),
-                if (beta.genre != null)
-                  Text(
-                    'Género: ${beta.genre}',
-                    style: DevTheme.body(size: 11, color: DevColors.mutedFg),
+                if (post.tags.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: post.tags
+                        .take(4)
+                        .map((tag) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: DevColors.muted,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(color: DevColors.border),
+                              ),
+                              child: Text(
+                                '#$tag',
+                                style: DevTheme.body(
+                                  size: 10,
+                                  color: DevColors.mutedFg,
+                                ),
+                              ),
+                            ))
+                        .toList(),
                   ),
+                ],
+                const SizedBox(height: 12),
+                const Divider(color: DevColors.border, height: 1),
+                const SizedBox(height: 8),
+                _buildActions(compact),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: DevColors.gold25,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: DevColors.gold40),
-            ),
-            child: Text(
-              beta.version ?? '',
-              style: DevTheme.body(size: 11, w: FontWeight.w700, color: DevColors.goldSoft),
-            ),
-          ),
         ],
       ),
     );
   }
-}
 
-class _Actions extends StatelessWidget {
-  final bool liked;
-  final int likes;
-  final int comments;
-  final int? downloads;
-  final bool hasBeta;
-  final VoidCallback onLike;
-  const _Actions({
-    required this.liked,
-    required this.likes,
-    required this.comments,
-    required this.downloads,
-    required this.hasBeta,
-    required this.onLike,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: DevColors.border)),
-      ),
-      child: Row(
-        children: [
-          PopScale(
-            trigger: likes,
-            child: _ActionButton(
-              icon: liked ? Icons.favorite : Icons.favorite_border,
-              active: liked,
-              activeColor: DevColors.likedRed,
-              label: '$likes',
-              onTap: onLike,
+  Widget _buildHeader(String username, PostAuthor? author) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: widget.onProfileTap,
+          child: UserAvatar(username: username, avatar: author?.avatar, size: 36),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GestureDetector(
+            onTap: widget.onProfileTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  author?.fullName?.isNotEmpty == true
+                      ? author!.fullName!
+                      : username,
+                  style: DevTheme.body(size: 13, w: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '@$username · ${_timeAgo(widget.post.createdAt)}',
+                  style: DevTheme.bodySecondary(size: 10.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 4),
-          _ActionButton(
-            icon: Icons.mode_comment_outlined,
-            label: '$comments',
-          ),
-          if (hasBeta && downloads != null) ...[
-            const SizedBox(width: 4),
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.download_rounded,
-                label: compactNumber(downloads!),
-              ),
-            ),
-          ] else
-            const Spacer(),
-          _ActionButton(
-            icon: Icons.share_outlined,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Enlace copiado 🔗')),
-              );
-            },
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 8),
+        _TypeBadge(type: widget.post.type),
+      ],
+    );
+  }
+
+  Widget _buildActions(bool compact) {
+    return Row(
+      children: [
+        _ActionButton(
+          icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          color: _liked ? DevColors.likedRed : DevColors.mutedFg,
+          label: compactNumber(_likes),
+          onTap: _toggleLike,
+          animated: _liked,
+          scale: _likeScale,
+        ),
+        _ActionButton(
+          icon: Icons.mode_comment_outlined,
+          label: compactNumber(widget.post.commentsCount),
+          onTap: widget.onCommentTap,
+        ),
+        _ActionButton(
+          icon: _shared ? Icons.share_rounded : Icons.ios_share_rounded,
+          color: _shared ? DevColors.primary : DevColors.mutedFg,
+          label: compactNumber(_shares),
+          onTap: _toggleShare,
+        ),
+        const Spacer(),
+        _ActionButton(
+          icon: _bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+          color: _bookmarked ? DevColors.gold : DevColors.mutedFg,
+          onTap: _toggleSave,
+        ),
+      ],
     );
   }
 }
 
+/// Botón de acción con icono y contador opcional.
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String? label;
-  final bool active;
-  final Color activeColor;
+  final Color? color;
   final VoidCallback? onTap;
+  final bool animated;
+  final Animation<double>? scale;
+
   const _ActionButton({
     required this.icon,
     this.label,
-    this.active = false,
-    this.activeColor = DevColors.likedRed,
+    this.color,
     this.onTap,
+    this.animated = false,
+    this.scale,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? activeColor : DevColors.mutedFg;
+    Widget iconWidget = Icon(icon, size: 18, color: color ?? DevColors.mutedFg);
+    if (animated && scale != null) {
+      iconWidget = ScaleTransition(scale: scale!, child: iconWidget);
+    }
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(20),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: color),
+            iconWidget,
             if (label != null) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               Text(
                 label!,
-                style: DevTheme.body(size: 12, w: FontWeight.w600, color: color),
+                style: DevTheme.bodySecondary(size: 11, color: color ?? DevColors.mutedFg),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Badge que indica el tipo de publicación.
+class _TypeBadge extends StatelessWidget {
+  final PostType type;
+
+  const _TypeBadge({required this.type});
+
+  static const _icons = {
+    PostType.game_showcase: Icons.sports_esports_rounded,
+    PostType.beta: Icons.science_rounded,
+    PostType.dev_log: Icons.code_rounded,
+    PostType.update: Icons.update_rounded,
+    PostType.stream: Icons.videocam_rounded,
+    PostType.poll: Icons.quiz_rounded,
+    PostType.announcement: Icons.campaign_rounded,
+    PostType.post: Icons.article_rounded,
+  };
+
+  static const _labels = {
+    PostType.game_showcase: 'Juego',
+    PostType.beta: 'Beta',
+    PostType.dev_log: 'DevLog',
+    PostType.update: 'Update',
+    PostType.stream: 'Stream',
+    PostType.poll: 'Encuesta',
+    PostType.announcement: 'Anuncio',
+    PostType.post: 'Post',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = type == PostType.dev_log || type == PostType.update
+        ? DevColors.gold
+        : DevColors.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_icons[type] ?? Icons.article_rounded, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            _labels[type] ?? 'Post',
+            style: DevTheme.labelCaps(size: 8, color: color),
+          ),
+        ],
       ),
     );
   }

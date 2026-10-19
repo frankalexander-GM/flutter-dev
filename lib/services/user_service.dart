@@ -132,4 +132,20 @@ class UserService {
         .map((e) => FollowUser.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  // --------------------------- Bookmarks / Favoritos ---------------------------
+
+  /// `GET /users/me/bookmarks` → `{posts: [PostOut]}`.
+  static Future<BookmarkListResponse> getMyBookmarks() async {
+    final data = await ApiService.getJson('/users/me/bookmarks');
+    return BookmarkListResponse.fromJson(data as Map<String, dynamic>);
+  }
+
+  // ---------------------------- Logros / Achievements --------------------------
+
+  /// `GET /users/me/achievements` → `{achievements: [Achievement]}`.
+  static Future<AchievementsResponse> getMyAchievements() async {
+    final data = await ApiService.getJson('/users/me/achievements');
+    return AchievementsResponse.fromJson(data as Map<String, dynamic>);
+  }
 }
