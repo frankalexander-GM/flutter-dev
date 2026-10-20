@@ -51,8 +51,9 @@ class _BetasScreenState extends State<BetasScreen> {
       betas.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       if (!mounted) return;
       final statuses = betas.map((b) => b.betaStatus).toSet();
-      final nextFilter =
-          _filter == 'all' || statuses.contains(_filter) ? _filter : 'all';
+      final nextFilter = _filter == 'all' || statuses.contains(_filter)
+          ? _filter
+          : 'all';
       setState(() {
         _betas = betas;
         _filter = nextFilter;
@@ -95,9 +96,8 @@ class _BetasScreenState extends State<BetasScreen> {
   Future<void> _createBeta() async {
     final created = await showBetaComposeSheet(context);
     if (created == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Beta publicada!')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('¡Beta publicada!')));
       await _load();
     }
   }
@@ -125,9 +125,7 @@ class _BetasScreenState extends State<BetasScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              opened
-                  ? 'Abriendo la descarga...'
-                  : 'Enlace de descarga copiado',
+              opened ? 'Abriendo la descarga...' : 'Enlace de descarga copiado',
             ),
           ),
         );
@@ -141,9 +139,8 @@ class _BetasScreenState extends State<BetasScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo descargar: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('No se pudo descargar: $e')));
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -154,131 +151,17 @@ class _BetasScreenState extends State<BetasScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: DevColors.card,
+      backgroundColor: Colors.transparent,
+      constraints: const BoxConstraints(maxWidth: 760),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: DevColors.muted,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (beta.coverImage != null && beta.coverImage!.isNotEmpty) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Image.network(
-                    beta.coverImage!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    errorBuilder: (_, _, _) => _betaCoverFallback(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-            ],
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    beta.title,
-                    style: DevTheme.display(size: 20, w: FontWeight.w800),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: DevColors.mutedFg,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _Pill(
-                  label: betaStatusLabel(beta.betaStatus),
-                  color: betaStatusColor(beta.betaStatus),
-                ),
-                if (beta.version != null && beta.version!.isNotEmpty)
-                  _Pill(label: beta.version!, color: DevColors.goldSoft),
-                if (beta.genre != null && beta.genre!.isNotEmpty)
-                  _Pill(label: beta.genre!, color: DevColors.mutedFg),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              beta.description,
-              style: DevTheme.body(size: 13, height: 1.5),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(
-                  Icons.download_rounded,
-                  size: 16,
-                  color: DevColors.mutedFg,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '${beta.downloads} descargas',
-                  style: DevTheme.bodySecondary(size: 12),
-                ),
-                const SizedBox(width: 16),
-                const Icon(
-                  Icons.event_rounded,
-                  size: 16,
-                  color: DevColors.mutedFg,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _formatDate(beta.createdAt),
-                  style: DevTheme.bodySecondary(size: 12),
-                ),
-              ],
-            ),
-            if (beta.externalUrl != null && beta.externalUrl!.isNotEmpty) ...[
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    await Clipboard.setData(
-                      ClipboardData(text: beta.externalUrl!),
-                    );
-                    if (!ctx.mounted) return;
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(content: Text('Enlace copiado')),
-                    );
-                  },
-                  icon: const Icon(Icons.link_rounded, size: 18),
-                  label: const Text('Copiar enlace'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: DevColors.goldSoft,
-                    side: const BorderSide(color: DevColors.border),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
+      builder: (ctx) => _BetaDetailsSheet(
+        beta: beta,
+        onDownload: () {
+          Navigator.of(ctx).pop();
+          _download(beta);
+        },
       ),
     );
   }
@@ -442,15 +325,17 @@ class _BetasScreenState extends State<BetasScreen> {
                       spacing: gap,
                       runSpacing: gap,
                       children: filtered
-                          .map((beta) => SizedBox(
-                                width: cardWidth,
-                                child: _BetaCard(
-                                  beta: beta,
-                                  busy: _busyId == beta.id,
-                                  onDownload: () => _download(beta),
-                                  onDetails: () => _showDetails(beta),
-                                ),
-                              ))
+                          .map(
+                            (beta) => SizedBox(
+                              width: cardWidth,
+                              child: _BetaCard(
+                                beta: beta,
+                                busy: _busyId == beta.id,
+                                onDownload: () => _download(beta),
+                                onDetails: () => _showDetails(beta),
+                              ),
+                            ),
+                          )
                           .toList(),
                     );
                   },
@@ -837,7 +722,9 @@ class _BetasHero extends StatelessWidget {
                           color: DevColors.consoleGreen.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
-                            color: DevColors.consoleGreen.withValues(alpha: 0.35),
+                            color: DevColors.consoleGreen.withValues(
+                              alpha: 0.35,
+                            ),
                           ),
                         ),
                         child: Row(
@@ -873,7 +760,10 @@ class _BetasHero extends StatelessWidget {
                     else
                       Column(
                         children: [
-                          SizedBox(width: double.infinity, child: _primaryCta()),
+                          SizedBox(
+                            width: double.infinity,
+                            child: _primaryCta(),
+                          ),
                           const SizedBox(height: 10),
                           SizedBox(
                             width: double.infinity,
@@ -928,7 +818,10 @@ class _BetasHero extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         foregroundColor: DevColors.goldSoft,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 22),
-        side: BorderSide(color: DevColors.gold.withValues(alpha: 0.6), width: 2),
+        side: BorderSide(
+          color: DevColors.gold.withValues(alpha: 0.6),
+          width: 2,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
       ),
     );
@@ -986,7 +879,7 @@ class _BetaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasDownload =
         (beta.externalUrl != null && beta.externalUrl!.isNotEmpty) ||
-            (beta.fileUrl != null && beta.fileUrl!.isNotEmpty);
+        (beta.fileUrl != null && beta.fileUrl!.isNotEmpty);
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -1064,10 +957,7 @@ class _BetaCard extends StatelessWidget {
                 ),
                 if (beta.genre != null && beta.genre!.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(
-                    beta.genre!,
-                    style: DevTheme.bodySecondary(size: 11.5),
-                  ),
+                  Text(beta.genre!, style: DevTheme.bodySecondary(size: 11.5)),
                 ],
                 const SizedBox(height: 8),
                 Text(
@@ -1112,8 +1002,9 @@ class _BetaCard extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: DevColors.primary,
                           foregroundColor: DevColors.primaryFg,
-                          disabledBackgroundColor:
-                              DevColors.primary.withValues(alpha: 0.4),
+                          disabledBackgroundColor: DevColors.primary.withValues(
+                            alpha: 0.4,
+                          ),
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
@@ -1150,6 +1041,447 @@ class _BetaCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BetaDetailsSheet extends StatelessWidget {
+  final Beta beta;
+  final VoidCallback onDownload;
+
+  const _BetaDetailsSheet({required this.beta, required this.onDownload});
+
+  bool get _hasExternal => (beta.externalUrl ?? '').trim().isNotEmpty;
+  bool get _hasFile => (beta.fileUrl ?? '').trim().isNotEmpty;
+  bool get _hasDownload => _hasExternal || _hasFile;
+  String? get _link => _hasExternal
+      ? beta.externalUrl!.trim()
+      : (_hasFile ? beta.fileUrl!.trim() : null);
+
+  Future<void> _copy(BuildContext context, String url) async {
+    await Clipboard.setData(ClipboardData(text: url));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Enlace copiado')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cover = beta.coverImage?.trim() ?? '';
+    final url = _link;
+    final screenshots = beta.screenshots
+        .map((screenshot) => screenshot.trim())
+        .where(_isHttpUrl)
+        .toList();
+    final hasDelivery =
+        url != null ||
+        (beta.externalPlatform ?? '').trim().isNotEmpty ||
+        (beta.fileName ?? '').trim().isNotEmpty ||
+        (beta.fileSize ?? 0) > 0;
+
+    return SafeArea(
+      top: false,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        child: Container(
+          color: DevColors.card,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 26),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: DevColors.muted,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (_isHttpUrl(cover)) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 8,
+                      child: Image.network(
+                        cover,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, _, _) => _betaCoverFallback(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        beta.title,
+                        style: DevTheme.display(size: 21, w: FontWeight.w800),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Cerrar',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: DevColors.mutedFg,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _Pill(
+                      label: betaStatusLabel(beta.betaStatus),
+                      color: betaStatusColor(beta.betaStatus),
+                    ),
+                    if ((beta.version ?? '').trim().isNotEmpty)
+                      _Pill(
+                        label: beta.version!.trim(),
+                        color: DevColors.goldSoft,
+                      ),
+                    if ((beta.genre ?? '').trim().isNotEmpty)
+                      _Pill(
+                        label: beta.genre!.trim(),
+                        color: DevColors.mutedFg,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  beta.description,
+                  style: DevTheme.body(size: 13, height: 1.55),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
+                    _Meta(
+                      icon: Icons.download_rounded,
+                      text: '${beta.downloads} descargas',
+                    ),
+                    _Meta(
+                      icon: Icons.event_rounded,
+                      text: _formatDate(beta.createdAt),
+                    ),
+                    if ((beta.fileSize ?? 0) > 0)
+                      _Meta(
+                        icon: Icons.sd_storage_outlined,
+                        text: _formatBytes(beta.fileSize),
+                      ),
+                  ],
+                ),
+                if (beta.platforms.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: beta.platforms
+                        .map(
+                          (platform) =>
+                              _Pill(label: platform, color: DevColors.mutedFg),
+                        )
+                        .toList(),
+                  ),
+                ],
+                if (beta.tags.isNotEmpty) ...[
+                  const SizedBox(height: 9),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: beta.tags
+                        .map(
+                          (tag) =>
+                              _Pill(label: '#$tag', color: DevColors.primary),
+                        )
+                        .toList(),
+                  ),
+                ],
+                if (_hasDownload || url != null) ...[
+                  const SizedBox(height: 18),
+                  _downloadActions(context, url),
+                ],
+                if (hasDelivery) ...[
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: DevColors.cardRaised,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: DevColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.local_shipping_outlined,
+                              size: 16,
+                              color: DevColors.gold,
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'Entrega',
+                              style: DevTheme.body(
+                                size: 12.5,
+                                w: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 9),
+                        _deliveryRow(
+                          'Tipo',
+                          beta.downloadType == 'DIRECT'
+                              ? 'Archivo directo'
+                              : 'Enlace externo',
+                        ),
+                        if ((beta.externalPlatform ?? '').trim().isNotEmpty)
+                          _deliveryRow(
+                            'Plataforma',
+                            beta.externalPlatform!.trim(),
+                          ),
+                        if ((beta.fileName ?? '').trim().isNotEmpty)
+                          _deliveryRow('Archivo', beta.fileName!.trim()),
+                        if ((beta.fileSize ?? 0) > 0)
+                          _deliveryRow('Tamaño', _formatBytes(beta.fileSize)),
+                        if (url != null) ...[
+                          const SizedBox(height: 7),
+                          Text(
+                            url,
+                            style: DevTheme.bodySecondary(size: 10.5),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+                if (screenshots.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  _sectionTitle('Capturas', Icons.photo_library_outlined),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 122,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: screenshots.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: SizedBox(
+                            width: 210,
+                            child: Image.network(
+                              screenshots[index],
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(
+                                color: DevColors.muted,
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.broken_image_outlined,
+                                    color: DevColors.mutedFg,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                _detailSection(
+                  icon: Icons.memory_rounded,
+                  title: 'Requisitos',
+                  text: beta.requirements,
+                ),
+                _detailSection(
+                  icon: Icons.terminal_rounded,
+                  title: 'Instrucciones de instalación',
+                  text: beta.installInstructions,
+                ),
+                _detailSection(
+                  icon: Icons.new_releases_outlined,
+                  title: 'Novedades de esta versión',
+                  text: beta.changelog,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _downloadActions(BuildContext context, String? url) {
+    final download = SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onDownload,
+        icon: const Icon(Icons.download_rounded, size: 18),
+        label: const Text('Descargar beta'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: DevColors.primary,
+          foregroundColor: DevColors.primaryFg,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(11),
+          ),
+        ),
+      ),
+    );
+    final copy = url == null
+        ? null
+        : SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _copy(context, url),
+              icon: const Icon(Icons.link_rounded, size: 18),
+              label: const Text('Copiar enlace'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: DevColors.goldSoft,
+                side: const BorderSide(color: DevColors.border),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(11),
+                ),
+              ),
+            ),
+          );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (copy == null) return download;
+        if (constraints.maxWidth < 480) {
+          return Column(children: [download, const SizedBox(height: 8), copy]);
+        }
+        return Row(
+          children: [
+            Expanded(child: download),
+            const SizedBox(width: 10),
+            Expanded(child: copy),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _deliveryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 82,
+            child: Text(label, style: DevTheme.bodySecondary(size: 11)),
+          ),
+          Expanded(child: Text(value, style: DevTheme.body(size: 11.5))),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: DevColors.gold),
+        const SizedBox(width: 7),
+        Text(title, style: DevTheme.body(size: 12.5, w: FontWeight.w700)),
+      ],
+    );
+  }
+
+  Widget _detailSection({
+    required IconData icon,
+    required String title,
+    required String? text,
+  }) {
+    final value = text?.trim() ?? '';
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle(title, icon),
+          const SizedBox(height: 7),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: DevColors.muted,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: DevColors.border),
+            ),
+            child: Text(
+              value,
+              style: DevTheme.body(
+                size: 12,
+                color: DevColors.mutedFg,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Meta extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _Meta({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: DevColors.mutedFg),
+        const SizedBox(width: 5),
+        Text(text, style: DevTheme.bodySecondary(size: 11.5)),
+      ],
+    );
+  }
+}
+
+bool _isHttpUrl(String value) {
+  final text = value.trim();
+  if (text.isEmpty) return false;
+  final uri = Uri.tryParse(text);
+  return uri != null &&
+      (uri.scheme == 'http' || uri.scheme == 'https') &&
+      uri.host.isNotEmpty;
+}
+
+String _formatBytes(int? bytes) {
+  if (bytes == null || bytes <= 0) return '—';
+  const kilo = 1024;
+  const mega = kilo * 1024;
+  const giga = mega * 1024;
+  if (bytes >= giga) {
+    return '${(bytes / giga).toStringAsFixed(1)} GB';
+  }
+  if (bytes >= mega) {
+    return '${(bytes / mega).toStringAsFixed(1)} MB';
+  }
+  return '${(bytes / kilo).toStringAsFixed(0)} KB';
 }
 
 Widget _betaCoverFallback() {
