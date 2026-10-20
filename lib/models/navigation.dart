@@ -154,7 +154,7 @@ const List<NavItem> kLibraryItems = [
   NavItem(
     id: ViewId.reportes,
     label: 'Reportes',
-    description: 'Ver y gestionar reportes',
+    description: 'Enviar reportes a moderación',
     icon: Icons.assignment_rounded,
     gradient: const LinearGradient(
       colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)],
