@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../models/beta.dart';
 import '../../models/post.dart';
 import '../../models/trending_game.dart';
+import '../../services/beta_service.dart';
 import '../../services/post_service.dart';
 import '../../theme.dart';
 import '../../utils/format.dart';
@@ -91,12 +94,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       if (posts.isNotEmpty) {
         setState(() => _featuredGame = posts.first);
       } else {
-        // Fallback a un juego de ejemplo si el backend aún no tiene posts showcase
-        setState(() => _featuredGame = _mockFeaturedGame());
+        setState(() => _featuredGame = null);
       }
     } catch (_) {
-      // Si falla el backend, usar mock para no romper la UI
-      setState(() => _featuredGame = _mockFeaturedGame());
+      // Sin backend no inventamos un juego: la sección simplemente no se pinta.
+      if (mounted) setState(() => _featuredGame = null);
     }
   }
 
@@ -128,19 +130,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           return TrendingGame(
             id: p.id,
             name: label,
-            version: p.game?.version ?? 'v1.0.0',
+            version: p.game?.version ?? '',
             views: compactNumber(p.likesCount),
             isTrending: true,
-            imageUrl: cover ?? 'https://picsum.photos/400/225?random=${p.id.hashCode}',
+            imageUrl: cover ?? '',
             gradient: const LinearGradient(colors: [Color(0xFFC66E41), Color(0xFFB05A35)]),
           );
         }).toList();
         _trendingLoading = false;
       });
     } catch (_) {
-      // Fallback a mock si el servicio falla
       setState(() {
-        _trendingGames = _mockTrendingGames();
+        _trendingGames = [];
         _trendingLoading = false;
       });
     }
@@ -156,7 +157,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       });
     } catch (_) {
       setState(() {
-        _devGames = _mockDevGames();
+        _devGames = [];
         _devLoading = false;
       });
     }
@@ -172,7 +173,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       });
     } catch (_) {
       setState(() {
-        _betaGames = _mockBetaGames();
+        _betaGames = [];
         _betaLoading = false;
       });
     }
@@ -310,12 +311,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           child: i == 0
                               ? Sheen(child: PostCard(
                                   post: _posts[i],
-                                  onCommentTap: widget.onCreateTap,
                                   onGameTap: widget.onGameTap,
                                 ))
                               : PostCard(
                                   post: _posts[i],
-                                  onCommentTap: widget.onCreateTap,
                                   onGameTap: widget.onGameTap,
                                 ),
                         ),
@@ -574,253 +573,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  // ===== JUEGO DESTACADO (MOCK) =====
-  Post _mockFeaturedGame() {
-    return Post(
-      id: 'featured_1',
-      type: PostType.game_showcase,
-      author: const PostAuthor(
-        id: 'dev_astro',
-        username: 'astro_baker',
-        fullName: 'Astro Baker',
-        avatar: '',
-        role: 'DEV',
-        bio: 'Making cozy games',
-        followersCount: 2100,
-        followingCount: 80,
-        isVerified: true,
-        tags: ['simulation', 'cozy', 'godot'],
-      ),
-      content:
-          '¡Astro Bakery ya está en beta! 🍞 Hornea panes espaciales, gestiona tu panadería interestelar y descubre recetas secretas. ¿Listo para ser el mejor panadero de la galaxia?',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      media: const [
-        PostMedia(url: 'https://picsum.photos/1200/400', kind: 'image'),
-      ],
-      likesCount: 312,
-      commentsCount: 45,
-      sharesCount: 89,
-      savesCount: 156,
-      viewsCount: 5600,
-      game: GameAttachment(
-        id: 'g5',
-        title: 'Astro Bakery',
-        coverUrl: 'https://picsum.photos/1200/400',
-        description: 'Simulación de panadería espacial. Gestiona tu panadería, descubre recetas, explora planetas.',
-        developer: 'Astro Baker',
-        genre: 'Simulation / Management',
-        platform: 'PC, Steam Deck',
-        status: 'beta',
-        version: 'v0.8.0',
-        playUrl: 'https://devplay.gg/beta/astro-bakery',
-        storeUrl: 'https://store.steampowered.com/app/astro-bakery',
-        tags: ['simulation', 'cozy', 'space', 'management'],
-        viewsCount: 12000,
-        followersCount: 2100,
-      ),
-      tags: ['simulation', 'cozy', 'beta', 'space', 'management'],
-    );
-  }
-
-  List<Post> _mockDevGames() {
-    return [
-      Post(
-        id: 'dev_1',
-        type: PostType.dev_log,
-        author: const PostAuthor(
-          id: 'u6',
-          username: 'code_wizard',
-          fullName: 'Code Wizard',
-          avatar: '',
-          role: 'DEV',
-          bio: 'Engine programmer',
-          followersCount: 980,
-          followingCount: 50,
-          tags: ['rust', 'bevy', 'engine dev'],
-        ),
-        content: 'DevLog #42: Reescritura del motor de física. Ahora los colisionadores funcionan correctamente en mundos grandes.',
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-        media: const [PostMedia(url: 'https://picsum.photos/400/225?random=1', kind: 'image')],
-        likesCount: 67,
-        commentsCount: 12,
-        game: GameAttachment(
-          id: 'g_dev1',
-          title: 'Physics Engine Rewrite',
-          coverUrl: 'https://picsum.photos/400/225?random=1',
-          description: 'Motor de física determinista para mundos grandes',
-          developer: 'Code Wizard',
-          genre: 'Engine / Tech',
-          status: 'prototype',
-          tags: ['rust', 'bevy', 'physics'],
-          viewsCount: 1200,
-          followersCount: 980,
-        ),
-        tags: ['dev log', 'physics', 'rust', 'bevy'],
-      ),
-      Post(
-        id: 'dev_2',
-        type: PostType.dev_log,
-        author: const PostAuthor(
-          id: 'u7',
-          username: 'pixel_master',
-          fullName: 'Pixel Master',
-          avatar: '',
-          role: 'DEV',
-          bio: 'Pixel artist & dev',
-          followersCount: 1500,
-          followingCount: 100,
-          tags: ['pixel art', 'godot', 'indie'],
-        ),
-        content: 'Nuevo tileset para el bioma volcánico. 32 nuevas variaciones de lava, rocas y cenizas.',
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        media: const [PostMedia(url: 'https://picsum.photos/400/225?random=2', kind: 'image')],
-        likesCount: 234,
-        commentsCount: 28,
-        game: GameAttachment(
-          id: 'g_dev2',
-          title: 'Volcanic Biome Tileset',
-          coverUrl: 'https://picsum.photos/400/225?random=2',
-          description: 'Tileset pixel art para bioma volcánico',
-          developer: 'Pixel Master',
-          genre: 'Asset Pack',
-          status: 'released',
-          tags: ['pixel art', 'tileset', 'godot'],
-          viewsCount: 3400,
-          followersCount: 1500,
-        ),
-        tags: ['pixel art', 'tileset', 'godot', 'assets'],
-      ),
-      Post(
-        id: 'dev_3',
-        type: PostType.update,
-        author: const PostAuthor(
-          id: 'u8',
-          username: 'net_code',
-          fullName: 'NetCode',
-          avatar: '',
-          role: 'DEV',
-          bio: 'Network programmer',
-          followersCount: 750,
-          followingCount: 30,
-          tags: ['netcode', 'multiplayer', 'rust'],
-        ),
-        content: 'v2.1.0: Implementado rollback netcode para fighting game. Latencia percibida < 2 frames.',
-        createdAt: DateTime.now().subtract(const Duration(hours: 6)),
-        likesCount: 89,
-        commentsCount: 15,
-        game: GameAttachment(
-          id: 'g_dev3',
-          title: 'FighterZ Rollback',
-          coverUrl: 'https://picsum.photos/400/225?random=3',
-          description: 'Rollback netcode implementation',
-          developer: 'NetCode',
-          genre: 'Fighting / Tech',
-          status: 'released',
-          version: 'v2.1.0',
-          tags: ['netcode', 'fighting', 'rollback'],
-          viewsCount: 2100,
-          followersCount: 750,
-        ),
-        tags: ['netcode', 'multiplayer', 'rollback', 'fighting'],
-      ),
-    ];
-  }
-
-  List<Post> _mockBetaGames() {
-    return [
-      Post(
-        id: 'beta_1',
-        type: PostType.beta,
-        author: const PostAuthor(
-          id: 'u9',
-          username: 'rogue_dev',
-          fullName: 'Rogue Dev',
-          avatar: '',
-          role: 'DEV',
-          bio: 'Roguelike enthusiast',
-          followersCount: 3200,
-          followingCount: 150,
-          tags: ['roguelike', 'procedural', 'unity'],
-        ),
-        content: '¡Dungeon Delver Beta 0.5 ya disponible! Mazmorras infinitas, 50+ items, 12 clases. Buscamos testers hardcore.',
-        createdAt: DateTime.now().subtract(const Duration(hours: 4)),
-        likesCount: 445,
-        commentsCount: 67,
-        game: GameAttachment(
-          id: 'beta_g1',
-          title: 'Dungeon Delver',
-          coverUrl: 'https://picsum.photos/400/225?random=4',
-          description: 'Roguelike de mazmorras infinitas con 12 clases únicas',
-          developer: 'Rogue Dev',
-          genre: 'Roguelike / RPG',
-          platform: 'PC',
-          status: 'beta',
-          version: 'v0.5.0',
-          playUrl: 'https://devplay.gg/beta/dungeon-delver',
-          tags: ['roguelike', 'procedural', 'rpg', 'hardcore'],
-          viewsCount: 15000,
-          followersCount: 3200,
-        ),
-        beta: BetaInfo(
-          id: 'beta_1',
-          title: 'Dungeon Delver',
-          version: 'v0.5.0',
-          genre: 'Roguelike',
-          downloads: 3400,
-          isOpen: true,
-          testersCount: 3400,
-          maxTesters: 10000,
-        ),
-        tags: ['roguelike', 'beta', 'procedural', 'rpg'],
-      ),
-      Post(
-        id: 'beta_2',
-        type: PostType.beta,
-        author: const PostAuthor(
-          id: 'u10',
-          username: 'horizon_studios',
-          fullName: 'Horizon Studios',
-          avatar: '',
-          role: 'DEV',
-          bio: 'Space sim developers',
-          followersCount: 1800,
-          followingCount: 80,
-          tags: ['space', 'simulation', 'unreal'],
-        ),
-        content: 'Star Horizon Alpha 2.0: Nuevo sistema de comercio, 50 sistemas estelares, IA mejorada.',
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        likesCount: 289,
-        commentsCount: 34,
-        game: GameAttachment(
-          id: 'beta_g2',
-          title: 'Star Horizon',
-          coverUrl: 'https://picsum.photos/400/225?random=5',
-          description: 'Simulación espacial con comercio, combate y exploración',
-          developer: 'Horizon Studios',
-          genre: 'Space Sim',
-          platform: 'PC',
-          status: 'alpha',
-          version: 'v2.0.0',
-          playUrl: 'https://devplay.gg/beta/star-horizon',
-          tags: ['space', 'simulation', 'trading', 'exploration'],
-          viewsCount: 8900,
-          followersCount: 1800,
-        ),
-        beta: BetaInfo(
-          id: 'beta_2',
-          title: 'Star Horizon',
-          version: 'v2.0.0',
-          genre: 'Space Sim',
-          downloads: 1200,
-          isOpen: true,
-          testersCount: 1200,
-          maxTesters: 5000,
-        ),
-        tags: ['space', 'simulation', 'alpha', 'trading'],
-      ),
-    ];
-  }
-
   // ===== UTILIDADES =====
   void _openGame(Post post) {
     final game = post.game;
@@ -842,43 +594,84 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Future<void> _openBeta(Post post) => _joinBeta(post);
 
   Future<void> _joinBeta(Post post) async {
-    final gameId = post.game?.id;
-    if (gameId == null || gameId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Esta beta no tiene un juego asociado')),
-      );
-      return;
-    }
     if (_joiningBeta) return;
     setState(() => _joiningBeta = true);
     try {
-      await PostService.joinBeta(gameId);
+      // El feed no embebe la beta: la buscamos por su `postId` en `/betas`.
+      Beta? beta;
+      if (post.beta?.id != null) {
+        beta = await BetaService.getBeta(post.beta!.id);
+      } else {
+        final betas = await BetaService.getBetas(limit: 100);
+        for (final candidate in betas) {
+          if (candidate.postId == post.id) {
+            beta = candidate;
+            break;
+          }
+        }
+      }
+
+      if (beta == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Esta publicación no tiene una beta asociada'),
+          ),
+        );
+        return;
+      }
+
+      final result = await BetaService.registerDownload(beta.id);
+      final url = (result['url'] ?? '').toString();
+      if (url.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('La beta todavía no tiene enlace de descarga')),
+        );
+        return;
+      }
+
+      var opened = false;
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        try {
+          opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (_) {
+          opened = false;
+        }
+      }
+      if (!opened) {
+        await Clipboard.setData(ClipboardData(text: url));
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Solicitud enviada para ${post.game?.title ?? post.title}'),
+          content: Text(opened
+              ? 'Abriendo la beta de ${beta.title}…'
+              : 'Enlace de la beta copiado'),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo unir a la beta: $e')),
+        SnackBar(content: Text('No se pudo abrir la beta: $e')),
       );
     } finally {
       if (mounted) setState(() => _joiningBeta = false);
     }
   }
+}
 
-  // Mock data trending
-  List<TrendingGame> _mockTrendingGames() {
-    return [
-      TrendingGame(id: 'g1', name: 'Elden Ring', version: 'v1.1.0', views: '3.4M', isTrending: true, imageUrl: 'https://cdn.akamai.steamstatic.com/steam/apps/1245620/header.jpg', gradient: const LinearGradient(colors: [Color(0xFFC66E41), Color(0xFFB05A35)])),
-      TrendingGame(id: 'g2', name: 'Hollow Knight', version: 'v1.5.78', views: '2.1M', isTrending: false, imageUrl: 'https://cdn.akamai.steamstatic.com/steam/apps/367520/header.jpg', gradient: const LinearGradient(colors: [Color(0xFF3C2B23), Color(0xFF2A1F1A)])),
-      TrendingGame(id: 'g3', name: 'Stardew Valley', version: 'v1.6.9', views: '912K', isTrending: true, imageUrl: 'https://cdn.akamai.steamstatic.com/steam/apps/413150/header.jpg', gradient: const LinearGradient(colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)])),
-      TrendingGame(id: 'g4', name: 'Cyberpunk 2077', version: 'v2.1', views: '7.6M', isTrending: true, imageUrl: 'https://cdn.akamai.steamstatic.com/steam/apps/1091500/header.jpg', gradient: const LinearGradient(colors: [Color(0xFFE04E8C), Color(0xFFB83A6A)])),
-      TrendingGame(id: 'g5', name: "Baldur's Gate 3", version: 'v4.1.1', views: '5.2M', isTrending: false, imageUrl: 'https://cdn.akamai.steamstatic.com/steam/apps/1086940/header.jpg', gradient: const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)])),
-    ];
+/// Título legible para un post sin metadatos de juego (el feed no embebe
+/// `game`), evitando `substring` fuera de rango en textos cortos.
+String _postLabel(Post post, {int max = 40}) {
+  final title = post.game?.title;
+  if (title != null && title.trim().isNotEmpty) return title;
+  final text = post.content.trim();
+  if (text.isEmpty) {
+    return post.media.isNotEmpty ? 'Publicación con imagen' : 'Publicación';
   }
+  return text.length > max ? '${text.substring(0, max)}…' : text;
 }
 
 // Shimmer para juegos en tendencia
@@ -959,15 +752,22 @@ class _TrendingGameCard extends StatelessWidget {
               aspectRatio: 16 / 9,
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: Image.network(
-                  game.imageUrl,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: DevColors.muted,
-                    child: Icon(Icons.image, color: DevColors.mutedFg, size: 32),
-                  ),
-                ),
+                child: game.imageUrl.isEmpty
+                    ? Container(
+                        color: DevColors.muted,
+                        child: Icon(Icons.image,
+                            color: DevColors.mutedFg, size: 32),
+                      )
+                    : Image.network(
+                        game.imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: DevColors.muted,
+                          child: Icon(Icons.image,
+                              color: DevColors.mutedFg, size: 32),
+                        ),
+                      ),
               ),
             ),
             Padding(
@@ -983,7 +783,7 @@ class _TrendingGameCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${game.views} vistas',
+                    '${game.views} me gusta',
                     style: DevTheme.bodySecondary(size: 10),
                   ),
                 ],
@@ -1082,7 +882,7 @@ class _FeaturedGameHero extends StatelessWidget {
                 const SizedBox(height: 12),
                 // Título
                 Text(
-                  game.game?.title ?? game.content.substring(0, 50),
+                  game.game?.title ?? _postLabel(game, max: 50),
                   style: DevTheme.display(size: 32, w: FontWeight.w800),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -1245,7 +1045,7 @@ class _DevGameCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(post.game?.title ?? post.content.substring(0, 30), style: DevTheme.body(size: 15, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(post.game?.title ?? _postLabel(post, max: 30), style: DevTheme.body(size: 15, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   if (post.game?.developer != null)
                     Text('por ${post.game!.developer}', style: DevTheme.bodySecondary(size: 11)),
@@ -1362,7 +1162,7 @@ class _BetaLabCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(post.game?.title ?? post.content.substring(0, 30), style: DevTheme.body(size: 15, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(post.game?.title ?? _postLabel(post, max: 30), style: DevTheme.body(size: 15, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   if (post.game?.developer != null)
                     Text('por ${post.game!.developer}', style: DevTheme.bodySecondary(size: 11)),
@@ -1386,10 +1186,10 @@ class _BetaLabCard extends StatelessWidget {
                       child: ElevatedButton.icon(
                         onPressed: onJoinTap,
                         icon: const Icon(Icons.science_rounded, size: 18),
-                        label: Text(beta?.isOpen == true ? 'Unirse a la beta' : 'Beta cerrada'),
+                        label: Text(beta.isOpen ? 'Unirse a la beta' : 'Beta cerrada'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: beta?.isOpen == true ? DevColors.primary : DevColors.muted,
-                          foregroundColor: beta?.isOpen == true ? Colors.white : DevColors.mutedFg,
+                          backgroundColor: beta.isOpen ? DevColors.primary : DevColors.muted,
+                          foregroundColor: beta.isOpen ? Colors.white : DevColors.mutedFg,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),

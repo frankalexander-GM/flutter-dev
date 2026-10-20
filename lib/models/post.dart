@@ -3,8 +3,6 @@
 /// perfiles/bookmarks). El parser acepta ambas formas.
 library;
 
-import 'package:flutter/material.dart';
-
 enum PostType { post, beta, stream, poll, game_showcase, dev_log, update, announcement }
 
 PostType postTypeFrom(String value) {
@@ -155,8 +153,11 @@ class PollAttachment {
   final List<PollOption> options;
   final bool allowMultiple;
   final bool showResults;
+  final DateTime? closesAt;
   final DateTime? endsAt;
   final int totalVotes;
+  final bool isClosed;
+  final List<String> votedOptionIds;
   final String? userVote;
 
   const PollAttachment({
@@ -165,23 +166,41 @@ class PollAttachment {
     required this.options,
     this.allowMultiple = false,
     this.showResults = true,
+    this.closesAt,
     this.endsAt,
     this.totalVotes = 0,
+    this.isClosed = false,
+    this.votedOptionIds = const [],
     this.userVote,
   });
 
-  factory PollAttachment.fromJson(Map<String, dynamic> json) => PollAttachment(
-        id: json['id'] as String,
-        question: json['question'] as String,
-        options: (json['options'] as List? ?? [])
-            .map((e) => PollOption.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        allowMultiple: json['allow_multiple'] as bool? ?? false,
-        showResults: json['show_results'] as bool? ?? true,
-        endsAt: json['ends_at'] != null ? DateTime.parse(json['ends_at'] as String) : null,
-        totalVotes: (json['total_votes'] ?? json['totalVotes'] ?? 0) as int,
-        userVote: json['user_vote'] as String?,
-      );
+  bool get hasVoted => votedOptionIds.isNotEmpty || userVote != null;
+
+  bool get canVote => !isClosed && !hasVoted;
+
+  factory PollAttachment.fromJson(Map<String, dynamic> json) {
+    final closes = json['closes_at'] ?? json['closesAt'];
+    final voted = (json['voted_option_ids'] ?? json['votedOptionIds'] ?? const [])
+        .cast<String>();
+    final single = json['user_vote'] as String?;
+    return PollAttachment(
+      id: json['id'] as String,
+      question: json['question'] as String,
+      options: (json['options'] as List? ?? [])
+          .map((e) => PollOption.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      allowMultiple: json['allow_multiple'] as bool? ?? false,
+      showResults: json['show_results'] as bool? ?? true,
+      closesAt: closes != null ? DateTime.tryParse(closes as String) : null,
+      endsAt: json['ends_at'] != null
+          ? DateTime.tryParse(json['ends_at'] as String)
+          : null,
+      totalVotes: (json['total_votes'] ?? json['totalVotes'] ?? 0) as int,
+      isClosed: json['is_closed'] as bool? ?? false,
+      votedOptionIds: voted.isNotEmpty ? voted : (single != null ? [single] : const []),
+      userVote: single,
+    );
+  }
 }
 
 class PollOption {
@@ -200,8 +219,9 @@ class PollOption {
   factory PollOption.fromJson(Map<String, dynamic> json) => PollOption(
         id: json['id'] as String,
         text: json['text'] as String,
-        votesCount: (json['votes_count'] ?? json['votesCount'] ?? 0) as int,
-        percentage: (json['percentage'] ?? 0.0) as double,
+        votesCount:
+            (json['vote_count'] ?? json['votes_count'] ?? json['votesCount'] ?? 0) as int,
+        percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
       );
 }
 
@@ -332,7 +352,7 @@ class Post {
       savesCount: (json['saves_count'] ?? json['savesCount'] ?? 0) as int,
       viewsCount: (json['views_count'] ?? json['viewsCount'] ?? 0) as int,
       liked: (json['liked_by_me'] ?? json['liked'] ?? false) as bool,
-      bookmarked: (json['bookmarked_by_me'] ?? json['savedAt'] != null ?? false) as bool,
+      bookmarked: (json['bookmarked_by_me'] ?? json['bookmarked'] ?? json['savedAt'] != null) as bool,
       shared: (json['shared_by_me'] ?? json['shared'] ?? false) as bool,
       createdAt: DateTime.parse(
         (json['created_at'] ?? json['createdAt']) as String,

@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/post.dart';
 import '../services/post_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import 'avatar.dart';
+import 'comments_sheet.dart';
+import 'post_poll.dart';
+import 'report_dialog.dart';
 
 /// Tarjeta de publicación de DevPlay.
 ///
 /// Reutilizable en Inicio, Descubrir y Perfil. Las interacciones (like,
-/// guardar, compartir) se envían al backend vía [PostService] con actualización
-/// optimista y reconciliación con la respuesta del servidor.
+/// guardar, comentar y encuestas) se envían a la API real. Compartir copia la
+/// publicación al portapapeles: el backend no tiene endpoint de shares.
 class PostCard extends StatefulWidget {
   final Post post;
   final bool compact;
-  final VoidCallback? onCommentTap;
-  final VoidCallback? onShareTap;
-  final VoidCallback? onSaveTap;
   final VoidCallback? onProfileTap;
   final void Function(String)? onGameTap;
 
@@ -24,9 +25,6 @@ class PostCard extends StatefulWidget {
     super.key,
     required this.post,
     this.compact = false,
-    this.onCommentTap,
-    this.onShareTap,
-    this.onSaveTap,
     this.onProfileTap,
     this.onGameTap,
   });
@@ -38,9 +36,8 @@ class PostCard extends StatefulWidget {
 class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
   late bool _liked = widget.post.liked;
   late int _likes = widget.post.likesCount;
-  late int _shares = widget.post.sharesCount;
+  late int _comments = widget.post.commentsCount;
   late bool _bookmarked = widget.post.bookmarked;
-  late bool _shared = widget.post.shared;
   bool _busy = false;
 
   late final AnimationController _likeController;
@@ -56,6 +53,17 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     _likeScale = Tween<double>(begin: 1.0, end: 1.25).animate(
       CurvedAnimation(parent: _likeController, curve: Curves.easeOutBack),
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.id != widget.post.id) {
+      _liked = widget.post.liked;
+      _likes = widget.post.likesCount;
+      _comments = widget.post.commentsCount;
+      _bookmarked = widget.post.bookmarked;
+    }
   }
 
   @override
@@ -102,12 +110,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     _busy = true;
     final wasSaved = _bookmarked;
     setState(() => _bookmarked = !_bookmarked);
-    widget.onSaveTap?.call();
     try {
-      final res = await PostService.toggleSave(
-        itemId: widget.post.id,
-        type: SavedItemType.post,
-      );
+      final res = await PostService.toggleBookmark(widget.post.id);
       if (!mounted) return;
       setState(() => _bookmarked = res['active'] as bool? ?? _bookmarked);
     } catch (_) {
@@ -118,31 +122,28 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     }
   }
 
-  Future<void> _toggleShare() async {
-    if (_busy) return;
-    _busy = true;
-    final wasShared = _shared;
-    setState(() {
-      _shared = !_shared;
-      _shares += _shared ? 1 : -1;
-    });
-    widget.onShareTap?.call();
-    try {
-      final res = await PostService.toggleShare(widget.post.id);
-      if (!mounted) return;
-      setState(() {
-        _shared = res['active'] as bool? ?? _shared;
-        _shares = res['count'] as int? ?? _shares;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _shared = wasShared;
-        _shares += wasShared ? 1 : -1;
-      });
-    } finally {
-      _busy = false;
-    }
+  Future<void> _share() async {
+    final username = widget.post.author?.username ?? 'DevPlay';
+    final content = widget.post.content.trim();
+    final text = content.isEmpty
+        ? 'Mira esta publicación de @$username en DevPlay\n${Uri.base.origin}'
+        : '$content\n\n— @$username en DevPlay\n${Uri.base.origin}';
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Publicación copiada al portapapeles')),
+    );
+  }
+
+  void _openComments() {
+    showCommentsSheet(
+      context,
+      post: widget.post,
+      onCountChanged: (count) {
+        if (!mounted) return;
+        setState(() => _comments = count);
+      },
+    );
   }
 
   @override
@@ -243,6 +244,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                         .toList(),
                   ),
                 ],
+                if (post.type == PostType.poll) ...[
+                  const SizedBox(height: 10),
+                  PostPollView(postId: post.id, initialPoll: post.poll),
+                ],
                 const SizedBox(height: 12),
                 const Divider(color: DevColors.border, height: 1),
                 const SizedBox(height: 8),
@@ -289,6 +294,29 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         ),
         const SizedBox(width: 8),
         _TypeBadge(type: widget.post.type),
+        PopupMenuButton<String>(
+          tooltip: 'Más opciones',
+          iconSize: 18,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          icon: const Icon(Icons.more_vert_rounded, color: DevColors.mutedFg),
+          onSelected: (value) {
+            if (value == 'report') {
+              showReportDialog(
+                context,
+                entityId: widget.post.id,
+                entityType: 'POST',
+                entityLabel: widget.post.content,
+              );
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: 'report',
+              child: Text('Reportar publicación'),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -306,14 +334,12 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         ),
         _ActionButton(
           icon: Icons.mode_comment_outlined,
-          label: compactNumber(widget.post.commentsCount),
-          onTap: widget.onCommentTap,
+          label: compactNumber(_comments),
+          onTap: _openComments,
         ),
         _ActionButton(
-          icon: _shared ? Icons.share_rounded : Icons.ios_share_rounded,
-          color: _shared ? DevColors.primary : DevColors.mutedFg,
-          label: compactNumber(_shares),
-          onTap: _toggleShare,
+          icon: Icons.ios_share_rounded,
+          onTap: _share,
         ),
         const Spacer(),
         _ActionButton(

@@ -16,6 +16,7 @@ class DevHeader extends StatelessWidget {
   final VoidCallback? onNotificationsTap;
   final VoidCallback? onLogout;
   final VoidCallback? onMenuTap;
+  final ValueChanged<String>? onSearch;
   final int unreadCount;
   final bool showMenu;
 
@@ -24,6 +25,7 @@ class DevHeader extends StatelessWidget {
     this.onNotificationsTap,
     this.onLogout,
     this.onMenuTap,
+    this.onSearch,
     this.unreadCount = 0,
     this.showMenu = true,
   });
@@ -96,8 +98,10 @@ class DevHeader extends StatelessWidget {
                   Expanded(
                     child: TextField(
                       style: DevTheme.body(size: 13, color: DevColors.foreground),
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: onSearch,
                       decoration: InputDecoration(
-                        hintText: 'Buscar juegos, devs, betas...',
+                        hintText: 'Buscar @usuario…',
                         hintStyle: DevTheme.bodySecondary(size: 13, color: DevColors.mutedFg),
                         border: InputBorder.none,
                         isDense: true,

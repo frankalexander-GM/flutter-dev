@@ -301,6 +301,29 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReportsScreen()));
   }
 
+  Future<void> _searchUser(String raw) async {
+    final username = raw.trim().replaceFirst(RegExp(r'^@'), '');
+    if (username.isEmpty) return;
+    try {
+      final id = await UserService.getUserIdByUsername(username);
+      if (!mounted) return;
+      if (id == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No existe el usuario @$username')),
+        );
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ProfileScreen(userId: id)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo buscar: $e')),
+      );
+    }
+  }
+
   void _showGameDetails(GameAttachment game) {
     showModalBottomSheet<void>(
       context: context,
@@ -482,6 +505,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               unreadCount: _unread,
                               onNotificationsTap: _openNotifications,
                               onLogout: _logout,
+                              onSearch: _searchUser,
                               showMenu: false,
                             ),
                             Expanded(child: _buildContent()),
@@ -499,6 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onNotificationsTap: _openNotifications,
                         onLogout: _logout,
                         onMenuTap: _openDrawer,
+                        onSearch: _searchUser,
                         showMenu: true,
                       ),
                       Expanded(child: _buildContent()),
@@ -850,7 +875,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 SnackBar(content: Text('$name - detalles')),
                               );
                             },
-                            onCommentTap: _onCreatePost,
                           ),
                         ),
                       ),
