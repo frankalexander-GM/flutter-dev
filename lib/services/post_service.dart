@@ -97,6 +97,32 @@ class PostService {
   static Future<void> deleteComment(String postId, String commentId) =>
       ApiService.deleteJson('/posts/$postId/comments/$commentId');
 
+  /// Crea un post de tipo `POLL` y le adjunta la encuesta real
+  /// (`POST /posts` + `POST /posts/{id}/poll`).
+  static Future<Post> createPoll({
+    required String question,
+    required List<String> options,
+    bool allowMultiple = false,
+  }) async {
+    final post = await createPost(content: question, type: 'POLL');
+    try {
+      await ApiService.postJson('/posts/${post.id}/poll', body: {
+        'question': question,
+        'options': options.map((text) => {'text': text}).toList(),
+        'allow_multiple': allowMultiple,
+      });
+    } catch (_) {
+      // No dejamos un post POLL huérfano si falla la encuesta.
+      try {
+        await deletePost(post.id);
+      } catch (_) {
+        // Si tampoco se puede borrar, se ignora.
+      }
+      rethrow;
+    }
+    return post;
+  }
+
   /// `GET /posts/{id}/poll` → encuesta del post, o `null` si no tiene.
   static Future<PollAttachment?> getPoll(String postId) async {
     try {

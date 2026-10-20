@@ -177,8 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onCreatePoll() {
-    _CreateDock(onCreated: _load)._open(context);
-    // TODO: filtrar por tipo POLL en el sheet
+    _CreateDock(onCreated: _load, startWithPoll: true)._open(context);
   }
 
   void _onStartTour() {
@@ -1411,10 +1410,15 @@ class _AboutRow extends StatelessWidget {
 /// y las crea vía `POST /posts`.
 class _CreateDock extends StatelessWidget {
   final VoidCallback onCreated;
+  final bool startWithPoll;
 
-  const _CreateDock({required this.onCreated});
+  const _CreateDock({required this.onCreated, this.startWithPoll = false});
 
   Future<void> _open(BuildContext context) async {
+    if (startWithPoll) {
+      await _openPollComposer(context);
+      return;
+    }
     final action = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: DevColors.card,
@@ -1467,6 +1471,12 @@ class _CreateDock extends StatelessWidget {
               label: 'Registro de desarrollo',
               type: 'DEV_LOG',
             ),
+            _Option(
+              icon: Icons.poll_outlined,
+              iconColor: DevColors.gold,
+              label: 'Crear encuesta',
+              type: 'POLL',
+            ),
             const SizedBox(height: 12),
           ],
         ),
@@ -1484,6 +1494,10 @@ class _CreateDock extends StatelessWidget {
             );
           }
         }
+        return;
+      }
+      if (action == 'POLL') {
+        await _openPollComposer(context);
         return;
       }
       final content = await showDialog<String>(
@@ -1505,6 +1519,33 @@ class _CreateDock extends StatelessWidget {
                 .showSnackBar(SnackBar(content: Text('$e')));
           }
         }
+      }
+    }
+  }
+
+  Future<void> _openPollComposer(BuildContext context) async {
+    final draft = await showDialog<_PollDraft>(
+      context: context,
+      builder: (_) => const _PollComposeDialog(),
+    );
+    if (draft == null || !context.mounted) return;
+    try {
+      await PostService.createPoll(
+        question: draft.question,
+        options: draft.options,
+        allowMultiple: draft.allowMultiple,
+      );
+      onCreated();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('¡Encuesta publicada!')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo crear la encuesta: $e')),
+        );
       }
     }
   }
@@ -1545,6 +1586,194 @@ class _CreateDock extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PollDraft {
+  final String question;
+  final List<String> options;
+  final bool allowMultiple;
+
+  const _PollDraft({
+    required this.question,
+    required this.options,
+    required this.allowMultiple,
+  });
+}
+
+class _PollComposeDialog extends StatefulWidget {
+  const _PollComposeDialog();
+
+  @override
+  State<_PollComposeDialog> createState() => _PollComposeDialogState();
+}
+
+class _PollComposeDialogState extends State<_PollComposeDialog> {
+  final _question = TextEditingController();
+  final List<TextEditingController> _options = [
+    TextEditingController(),
+    TextEditingController(),
+  ];
+  bool _multiple = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _question.dispose();
+    for (final controller in _options) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addOption() {
+    if (_options.length >= 10) return;
+    setState(() => _options.add(TextEditingController()));
+  }
+
+  void _removeOption(int index) {
+    if (_options.length <= 2) return;
+    setState(() => _options.removeAt(index).dispose());
+  }
+
+  void _submit() {
+    final question = _question.text.trim();
+    final options = _options
+        .map((controller) => controller.text.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+
+    if (question.isEmpty) {
+      setState(() => _error = 'Escribe la pregunta');
+      return;
+    }
+    if (options.length < 2) {
+      setState(() => _error = 'Añade al menos 2 opciones');
+      return;
+    }
+    if (options.toSet().length != options.length) {
+      setState(() => _error = 'Las opciones no pueden repetirse');
+      return;
+    }
+
+    Navigator.pop(
+      context,
+      _PollDraft(
+        question: question,
+        options: options,
+        allowMultiple: _multiple,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: DevColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text('Nueva encuesta', style: DevTheme.display(size: 16)),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _question,
+                autofocus: true,
+                maxLength: 500,
+                style: DevTheme.body(size: 13.5),
+                decoration: _decoration('¿Qué quieres preguntar?'),
+              ),
+              const SizedBox(height: 6),
+              ...List.generate(_options.length, (index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _options[index],
+                          maxLength: 200,
+                          style: DevTheme.body(size: 13),
+                          decoration: _decoration('Opción ${index + 1}'),
+                        ),
+                      ),
+                      if (_options.length > 2)
+                        IconButton(
+                          tooltip: 'Quitar opción',
+                          onPressed: () => _removeOption(index),
+                          icon: const Icon(Icons.remove_circle_outline_rounded,
+                              size: 18, color: DevColors.destructive),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+              if (_options.length < 10)
+                TextButton.icon(
+                  onPressed: _addOption,
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: Text('Añadir opción',
+                      style: DevTheme.body(size: 12)),
+                ),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _multiple,
+                activeThumbColor: DevColors.primary,
+                title: Text('Permitir varios votos',
+                    style: DevTheme.body(size: 12.5)),
+                onChanged: (value) => setState(() => _multiple = value),
+              ),
+              if (_error != null)
+                Text(
+                  _error!,
+                  style: DevTheme.body(size: 11.5, color: DevColors.destructive),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancelar',
+              style: DevTheme.body(color: DevColors.mutedFg)),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: DevColors.primary,
+            foregroundColor: DevColors.primaryFg,
+            elevation: 0,
+          ),
+          child: const Text('Publicar'),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _decoration(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: DevTheme.body(size: 12.5, color: DevColors.mutedFg),
+        filled: true,
+        fillColor: DevColors.cardRaised,
+        counterText: '',
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: DevColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: DevColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: DevColors.primary),
+        ),
+      );
 }
 
 class _ComposeDialog extends StatefulWidget {
