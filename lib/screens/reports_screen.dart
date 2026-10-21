@@ -108,7 +108,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   items: const [
                     DropdownMenuItem(value: 'POST', child: Text('Publicación')),
                     DropdownMenuItem(value: 'USER', child: Text('Usuario')),
-                    DropdownMenuItem(value: 'COMMENT', child: Text('Comentario')),
+                    DropdownMenuItem(
+                      value: 'COMMENT',
+                      child: Text('Comentario'),
+                    ),
                     DropdownMenuItem(value: 'BETA', child: Text('Beta')),
                   ],
                   onChanged: (value) {
@@ -138,10 +141,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   style: DevTheme.body(size: 13),
                   decoration: _inputDecoration(),
                   items: _reasons.entries
-                      .map((e) => DropdownMenuItem(
-                            value: e.key,
-                            child: Text(e.value),
-                          ))
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e.key,
+                          child: Text(e.value),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     if (value != null) setState(() => _reason = value);
@@ -155,9 +160,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   minLines: 3,
                   maxLines: 5,
                   maxLength: 500,
-                  decoration: _inputDecoration(
-                    hint: 'Cuéntanos qué pasó…',
-                  ),
+                  decoration: _inputDecoration(hint: 'Cuéntanos qué pasó…'),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -182,8 +185,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               color: Colors.white,
                             ),
                           )
-                        : Text('Enviar reporte',
-                            style: DevTheme.body(size: 13, w: FontWeight.w700)),
+                        : Text(
+                            'Enviar reporte',
+                            style: DevTheme.body(size: 13, w: FontWeight.w700),
+                          ),
                   ),
                 ),
               ],
@@ -200,8 +205,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline_rounded,
-                    size: 16, color: DevColors.mutedFg),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: DevColors.mutedFg,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -219,31 +227,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          text,
-          style: DevTheme.body(size: 12, w: FontWeight.w600),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(text, style: DevTheme.body(size: 12, w: FontWeight.w600)),
+  );
 
   InputDecoration _inputDecoration({String? hint}) => InputDecoration(
-        hintText: hint,
-        hintStyle: DevTheme.bodySecondary(size: 12, color: DevColors.mutedFg),
-        filled: true,
-        fillColor: DevColors.cardRaised,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: DevColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: DevColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: DevColors.primary),
-        ),
-      );
+    hintText: hint,
+    hintStyle: DevTheme.bodySecondary(size: 12, color: DevColors.mutedFg),
+    filled: true,
+    fillColor: DevColors.cardRaised,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: DevColors.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: DevColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: DevColors.primary),
+    ),
+  );
 }

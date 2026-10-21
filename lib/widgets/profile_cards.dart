@@ -212,7 +212,7 @@ class MediaTile extends StatelessWidget {
               const Center(
                 child: CircleAvatar(
                   radius: 16,
-                  backgroundColor: Color(0x991C1411),
+                  backgroundColor: Color(0x99060B14),
                   child: Icon(
                     Icons.play_arrow_rounded,
                     color: DevColors.cream,

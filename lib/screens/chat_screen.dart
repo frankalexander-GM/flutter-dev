@@ -704,7 +704,7 @@ class _ChatHero extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF4A2A1C), Color(0xFF33231B), Color(0xFF241A15)],
+          colors: [Color(0xFF0F172A), Color(0xFF0A101D), Color(0xFF0A101D)],
         ),
         border: Border.all(color: DevColors.border),
         boxShadow: [

@@ -68,7 +68,7 @@ class _DevSidebarState extends State<DevSidebar> {
         return Container(
           width: _sidebarCompact ? 64 : 224,
           decoration: const BoxDecoration(
-            color: DevColors.card,
+            color: DevColors.surface,
             border: Border(
               right: BorderSide(color: DevColors.border, width: 1.5),
             ),
@@ -146,7 +146,7 @@ class _DevSidebarState extends State<DevSidebar> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
+                  colors: [Color(0xFF00F0FF), Color(0xFF8B5CF6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -170,7 +170,7 @@ class _DevSidebarState extends State<DevSidebar> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
+                  colors: [Color(0xFF00F0FF), Color(0xFF8B5CF6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -432,15 +432,9 @@ class _DevSidebarState extends State<DevSidebar> {
           InkWell(
             onTap: widget.onProfileTap,
             borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.all(2),
-              child: avatar,
-            ),
+            child: Padding(padding: const EdgeInsets.all(2), child: avatar),
           ),
-          if (!_sidebarCompact) ...[
-            const SizedBox(width: 10),
-            info,
-          ],
+          if (!_sidebarCompact) ...[const SizedBox(width: 10), info],
           if (!_sidebarCompact)
             IconButton(
               icon: const Icon(
@@ -478,6 +472,8 @@ class _NavButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
+        hoverColor: DevColors.accentCyan.withValues(alpha: 0.05),
+        splashColor: DevColors.accentCyan.withValues(alpha: 0.08),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: EdgeInsets.symmetric(
@@ -487,20 +483,20 @@ class _NavButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             color: active
-                ? DevColors.primary.withValues(alpha: 0.15)
+                ? DevColors.accentCyan.withValues(alpha: 0.12)
                 : Colors.transparent,
             border: active
                 ? Border.all(
-                    color: DevColors.primary.withValues(alpha: 0.5),
+                    color: DevColors.accentCyan.withValues(alpha: 0.75),
                     width: 1.5,
                   )
                 : null,
             boxShadow: active
                 ? [
                     BoxShadow(
-                      color: DevColors.primary.withValues(alpha: 0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      color: DevColors.accentCyan.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 0),
                     ),
                   ]
                 : null,
@@ -522,7 +518,7 @@ class _NavButton extends StatelessWidget {
                 child: Icon(
                   item.icon,
                   size: compact ? 16 : 18,
-                  color: active ? DevColors.cream : DevColors.mutedFg,
+                  color: active ? DevColors.cream : DevColors.disabled,
                 ),
               ),
               if (!compact) ...[
@@ -538,8 +534,8 @@ class _NavButton extends StatelessWidget {
                           size: 13,
                           w: active ? FontWeight.w700 : FontWeight.w500,
                           color: active
-                              ? DevColors.foreground
-                              : DevColors.foreground,
+                              ? DevColors.accentCyan
+                              : DevColors.mutedFg,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -547,7 +543,9 @@ class _NavButton extends StatelessWidget {
                         item.description,
                         style: DevTheme.body(
                           size: 10,
-                          color: active ? DevColors.primary : DevColors.mutedFg,
+                          color: active
+                              ? DevColors.accentCyan
+                              : DevColors.mutedFg,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -646,7 +644,7 @@ class _HelpButton extends StatelessWidget {
     final isTour = item.label == 'Tour guiado';
     final gradient = isTour
         ? const LinearGradient(
-            colors: [Color(0xFFE08A52), Color(0xFFB8862E)],
+            colors: [Color(0xFF00F0FF), Color(0xFF6D28D9)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           )

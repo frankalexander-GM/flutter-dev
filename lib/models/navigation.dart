@@ -39,7 +39,7 @@ const List<NavItem> kMainNav = [
     description: 'Novedades y trending',
     icon: Icons.auto_awesome_rounded,
     gradient: const LinearGradient(
-      colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)],
+      colors: [Color(0xFF00F0FF), Color(0xFF3B82F6)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -50,7 +50,7 @@ const List<NavItem> kMainNav = [
     description: 'Feed principal',
     icon: Icons.home_rounded,
     gradient: const LinearGradient(
-      colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)],
+      colors: [Color(0xFF00F0FF), Color(0xFF3B82F6)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -61,7 +61,7 @@ const List<NavItem> kMainNav = [
     description: 'Centro de betas',
     icon: Icons.sports_esports_rounded,
     gradient: const LinearGradient(
-      colors: [Color(0xFFD9A441), Color(0xFFB8862E)],
+      colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -72,7 +72,7 @@ const List<NavItem> kMainNav = [
     description: 'Chatea con la comunidad',
     icon: Icons.chat_bubble_outline_rounded,
     gradient: const LinearGradient(
-      colors: [Color(0xFFD9A441), Color(0xFFB8862E)],
+      colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -83,7 +83,7 @@ const List<NavItem> kMainNav = [
     description: 'No disponible · En construcción',
     icon: Icons.storefront_rounded,
     gradient: const LinearGradient(
-      colors: [Color(0xFFB8862E), Color(0xFF9D6B1F)],
+      colors: [Color(0xFF6D28D9), Color(0xFF0EA5E9)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -98,7 +98,7 @@ const List<NavItem> kCreateItems = [
     description: 'Publicar una beta nueva',
     icon: Icons.sports_esports_rounded,
     gradient: const LinearGradient(
-      colors: [Color(0xFFD9A441), Color(0xFFB8862E)],
+      colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -109,7 +109,7 @@ const List<NavItem> kCreateItems = [
     description: 'Nueva encuesta para la comunidad',
     icon: Icons.poll_rounded,
     gradient: const LinearGradient(
-      colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)],
+      colors: [Color(0xFF22D3EE), Color(0xFF0EA5E9)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -124,7 +124,7 @@ const List<NavItem> kHelpItems = [
     description: 'Recorrido por la app',
     icon: Icons.tour_rounded,
     gradient: const LinearGradient(
-      colors: [Color(0xFFDC7A44), Color(0xFFB8862E)],
+      colors: [Color(0xFF00F0FF), Color(0xFF6D28D9)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),

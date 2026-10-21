@@ -12,6 +12,7 @@ import 'profile_screen.dart';
 import '../../utils/format.dart';
 import 'trending_games_screen.dart';
 import '../../widgets/animations.dart';
+import '../../widgets/game_compose_sheet.dart';
 import '../../widgets/hero_3d_shapes.dart';
 import '../../widgets/hero_video.dart';
 import '../../widgets/post_card.dart';
@@ -80,6 +81,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     ]);
   }
 
+  Future<void> _onPublishGame() async {
+    final created = await showGameComposeSheet(context);
+    if (created != true || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('¡Juego publicado! Ya aparece en Descubrir.'),
+      ),
+    );
+    await _loadAll();
+  }
+
   // ---------------------------------------------------------
   // 1. Juego Destacado (usando endpoint real GAME_SHOWCASE)
   // ---------------------------------------------------------
@@ -134,7 +146,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             isTrending: true,
             imageUrl: cover ?? '',
             gradient: const LinearGradient(
-              colors: [Color(0xFFC66E41), Color(0xFFB05A35)],
+              colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6)],
             ),
           );
         }).toList();
@@ -256,7 +268,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       onPlayTap: () => _openGame(_featuredGame!),
                       onBetaTap: () => _openBeta(_featuredGame!),
                     )
-                  : _DiscoverHeroFallback(onCreateTap: widget.onCreateTap),
+                  : _DiscoverHeroFallback(onCreateTap: _onPublishGame),
             ),
 
             // 2. FEED DE PUBLICACIONES (integrado en el scroll principal)
@@ -368,45 +380,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: DiscoverFilter.values.map((filter) {
-          final isActive = _activeFilter == filter;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              avatar: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: isActive ? DevColors.primary : DevColors.muted,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  filter.icon,
-                  size: 14,
-                  color: isActive ? Colors.white : DevColors.mutedFg,
-                ),
-              ),
-              label: Text(
-                filter.label,
-                style: DevTheme.body(
-                  size: 12,
-                  w: isActive ? FontWeight.w700 : FontWeight.w500,
-                  color: isActive ? Colors.white : DevColors.foreground,
-                ),
-              ),
-              selected: isActive,
-              onSelected: (_) => _onFilterChanged(filter),
-              selectedColor: DevColors.primary.withValues(alpha: 0.15),
-              checkmarkColor: DevColors.primary,
-              backgroundColor: DevColors.card,
-              side: BorderSide(
-                color: isActive ? DevColors.primary : DevColors.border,
-                width: isActive ? 1.5 : 1,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              showCheckmark: false,
+            child: _FilterPill(
+              filter: filter,
+              active: _activeFilter == filter,
+              onTap: () => _onFilterChanged(filter),
             ),
           );
         }).toList(),
@@ -668,29 +647,39 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   void _openAuthor(Post post) {
     final authorId = post.author?.id;
     if (authorId == null) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ProfileScreen(userId: authorId),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: authorId)));
   }
 
-  void _openGame(Post post) {
+  Future<void> _openGame(Post post) async {
     final game = post.game;
-    final url = game?.playUrl;
+    final title = game?.title ?? post.title;
+    final url = game?.playUrl ?? _firstUrl(post.content);
     if (url == null || url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${game?.title ?? post.title} todavía no tiene enlace jugable',
-          ),
-        ),
+        SnackBar(content: Text('$title todavía no tiene enlace jugable')),
       );
       return;
     }
-    Clipboard.setData(ClipboardData(text: url));
+
+    var opened = false;
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      try {
+        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        opened = false;
+      }
+    }
+    if (!opened) {
+      await Clipboard.setData(ClipboardData(text: url));
+    }
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Enlace de ${game?.title ?? post.title} copiado')),
+      SnackBar(
+        content: Text(opened ? 'Abriendo $title…' : 'Enlace de $title copiado'),
+      ),
     );
   }
 
@@ -778,7 +767,14 @@ String _postLabel(Post post, {int max = 40}) {
   if (text.isEmpty) {
     return post.media.isNotEmpty ? 'Publicación con imagen' : 'Publicación';
   }
-  return text.length > max ? '${text.substring(0, max)}…' : text;
+  final firstLine = text.split(RegExp(r'\r?\n')).first.trim();
+  final label = firstLine.isEmpty ? text : firstLine;
+  return label.length > max ? '${label.substring(0, max)}…' : label;
+}
+
+String? _firstUrl(String text) {
+  final match = RegExp(r'https?://[^\s]+').firstMatch(text);
+  return match?.group(0);
 }
 
 // Shimmer para juegos en tendencia
@@ -938,7 +934,7 @@ class _FeaturedGameHero extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [const Color(0xFF2A1F1A), const Color(0xFF1C1411)],
+          colors: [const Color(0xFF0F172A), const Color(0xFF060B14)],
         ),
         border: Border.all(color: DevColors.border),
         boxShadow: [
@@ -989,7 +985,7 @@ class _FeaturedGameHero extends StatelessWidget {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          const Color(0xFF1C1411).withValues(alpha: 0.9),
+                          const Color(0xFF060B14).withValues(alpha: 0.9),
                         ],
                         stops: const [0.6, 1.0],
                       ),
@@ -1176,7 +1172,7 @@ class _DiscoverHeroFallback extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2A1F1A), Color(0xFF1C1411)],
+          colors: [Color(0xFF0F172A), Color(0xFF060B14)],
         ),
         border: Border.all(color: DevColors.border),
         boxShadow: [
@@ -1209,15 +1205,23 @@ class _DiscoverHeroFallback extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
-                    color: DevColors.primary.withValues(alpha: 0.2),
+                    color: DevColors.accentCyan.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: DevColors.primary),
+                    border: Border.all(
+                      color: DevColors.accentCyan.withValues(alpha: 0.30),
+                    ),
                   ),
                   child: Text(
                     'DESCUBRIR',
-                    style: DevTheme.labelCaps(size: 10, color: DevColors.primary),
+                    style: DevTheme.labelCaps(
+                      size: 10,
+                      color: DevColors.accentCyan,
+                    ).copyWith(letterSpacing: 1.6),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1232,19 +1236,12 @@ class _DiscoverHeroFallback extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 if (onCreateTap != null)
-                  ElevatedButton.icon(
-                    onPressed: onCreateTap,
-                    icon: const Icon(Icons.add_rounded, size: 20),
-                    label: const Text('Publicar un juego'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                  _GlowGradientButton(
+                    onTap: onCreateTap,
+                    icon: Icons.add_rounded,
+                    label: 'Publicar un juego',
+                    colors: const [Color(0xFFFF5E00), Color(0xFFFF8700)],
+                    glow: const Color(0xFFFF5E00),
                   ),
               ],
             ),
@@ -1745,24 +1742,12 @@ class _EmptyState extends StatelessWidget {
             ),
             if (onAction != null) ...[
               const SizedBox(height: 20),
-              OutlinedButton.icon(
-                onPressed: onAction,
-                icon: const Icon(Icons.explore_rounded, size: 18),
-                label: Text(
-                  actionLabel,
-                  style: DevTheme.body(size: 13, w: FontWeight.w600),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: DevColors.primary,
-                  side: const BorderSide(color: DevColors.primary, width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                ),
+              _GlowGradientButton(
+                onTap: onAction,
+                icon: Icons.explore_rounded,
+                label: actionLabel,
+                colors: const [DevColors.accentCyan, DevColors.primary],
+                glow: DevColors.accentCyan,
               ),
             ],
           ],
@@ -1815,4 +1800,174 @@ enum DiscoverFilter {
   const DiscoverFilter(this.label, this.icon);
   final String label;
   final IconData icon;
+}
+
+/// Píldora de filtro con estética neón/glass.
+///
+/// Activa: cian translúcido + borde cian + halo. Inactiva: superficie oscura
+/// translúcida con texto apagado que sube de contraste al pasar el mouse.
+class _FilterPill extends StatefulWidget {
+  final DiscoverFilter filter;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _FilterPill({
+    required this.filter,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  State<_FilterPill> createState() => _FilterPillState();
+}
+
+class _FilterPillState extends State<_FilterPill> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    const cyan = DevColors.accentCyan;
+    const slate800 = Color(0xFF1E293B);
+    const slate400 = Color(0xFF94A3B8);
+    final active = widget.active;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: active
+                ? cyan.withValues(alpha: 0.15)
+                : const Color(0xFF0F172A)
+                      .withValues(alpha: _hover ? 0.75 : 0.6),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: active
+                  ? cyan
+                  : (_hover ? slate400.withValues(alpha: 0.4) : slate800),
+              width: active ? 1.5 : 1,
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: cyan.withValues(alpha: 0.25),
+                      blurRadius: 10,
+                      spreadRadius: -1,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.filter.icon,
+                size: 14,
+                color: active ? cyan : slate400,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.filter.label,
+                style: DevTheme.body(
+                  size: 12,
+                  w: active ? FontWeight.w700 : FontWeight.w500,
+                  color: active
+                      ? cyan
+                      : (_hover ? DevColors.foreground : slate400),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Botón CTA con gradiente y glow, usado en el banner y el estado vacío.
+class _GlowGradientButton extends StatefulWidget {
+  final VoidCallback? onTap;
+  final IconData icon;
+  final String label;
+  final List<Color> colors;
+  final Color glow;
+
+  const _GlowGradientButton({
+    required this.onTap,
+    required this.icon,
+    required this.label,
+    required this.colors,
+    required this.glow,
+  });
+
+  @override
+  State<_GlowGradientButton> createState() => _GlowGradientButtonState();
+}
+
+class _GlowGradientButtonState extends State<_GlowGradientButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _hover ? 1.03 : 1,
+          duration: const Duration(milliseconds: 140),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: widget.colors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: _hover ? 0.28 : 0.16),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.glow.withValues(alpha: _hover ? 0.6 : 0.4),
+                  blurRadius: _hover ? 22 : 15,
+                  spreadRadius: -2,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(widget.icon, size: 20, color: Colors.white),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DevTheme.body(
+                      size: 14,
+                      w: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

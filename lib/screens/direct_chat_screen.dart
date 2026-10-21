@@ -77,8 +77,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
       final msgs = await ChatService.getDirectMessages(widget.peerId);
       if (!mounted) return;
       final known = _messages.map((m) => m.id).toSet();
-      final nuevos =
-          msgs.reversed.where((m) => !known.contains(m.id)).toList();
+      final nuevos = msgs.reversed.where((m) => !known.contains(m.id)).toList();
       if (nuevos.isEmpty) return;
       setState(() => _messages = [...nuevos, ..._messages]);
       _markRead();
@@ -121,9 +120,8 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         () => _messages = _messages.where((m) => m.id != temp.id).toList(),
       );
       final detail = e is ApiException ? e.detail : '$e';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo enviar: $detail')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('No se pudo enviar: $detail')));
       return false;
     }
   }
@@ -284,10 +282,12 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
       itemCount: _messages.length,
       itemBuilder: (context, index) {
         final msg = _messages[index];
-        final older =
-            index + 1 < _messages.length ? _messages[index + 1] : null;
+        final older = index + 1 < _messages.length
+            ? _messages[index + 1]
+            : null;
         final isMine = msg.senderId == myId;
-        final showHeader = older == null ||
+        final showHeader =
+            older == null ||
             older.senderId != msg.senderId ||
             msg.createdAt.difference(older.createdAt).inMinutes.abs() > 5;
         final showDay =

@@ -36,7 +36,7 @@ class _ConsoleScreenState extends State<ConsoleScreen>
         borderRadius: BorderRadius.circular(4),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x38DC7A44),
+            color: Color(0x3800F0FF),
             blurRadius: 0,
             offset: Offset(0, 2),
           ),

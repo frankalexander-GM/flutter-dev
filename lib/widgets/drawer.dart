@@ -204,7 +204,7 @@ class _DevDrawerState extends State<DevDrawer>
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
+                    colors: [Color(0xFF00F0FF), Color(0xFF8B5CF6)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -395,22 +395,22 @@ class _DevDrawerState extends State<DevDrawer>
       (
         'Publicar',
         Icons.article_rounded,
-        const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)]),
+        const LinearGradient(colors: [Color(0xFF00F0FF), Color(0xFF3B82F6)]),
       ),
       (
         'Beta',
         Icons.sports_esports_rounded,
-        const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)]),
+        const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)]),
       ),
       (
         'Encuesta',
         Icons.poll_rounded,
-        const LinearGradient(colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)]),
+        const LinearGradient(colors: [Color(0xFF22D3EE), Color(0xFF0EA5E9)]),
       ),
       (
         'Stream',
         Icons.videocam_rounded,
-        const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)]),
+        const LinearGradient(colors: [Color(0xFF00F0FF), Color(0xFF3B82F6)]),
       ),
     ];
 
@@ -526,7 +526,7 @@ class _DevDrawerState extends State<DevDrawer>
           icon: Icons.tour_rounded,
           label: 'Tour guiado',
           gradient: const LinearGradient(
-            colors: [Color(0xFFDC7A44), Color(0xFFB8862E)],
+            colors: [Color(0xFF00F0FF), Color(0xFF6D28D9)],
           ),
           onTap: () {
             widget.onStartTour?.call();
@@ -594,19 +594,29 @@ class _MobileNavItem extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
+        hoverColor: DevColors.accentCyan.withValues(alpha: 0.05),
+        splashColor: DevColors.accentCyan.withValues(alpha: 0.08),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             color: active
-                ? DevColors.primary.withValues(alpha: 0.15)
+                ? DevColors.accentCyan.withValues(alpha: 0.12)
                 : Colors.transparent,
             border: active
                 ? Border.all(
-                    color: DevColors.primary.withValues(alpha: 0.5),
+                    color: DevColors.accentCyan.withValues(alpha: 0.7),
                     width: 1.5,
                   )
+                : null,
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: DevColors.accentCyan.withValues(alpha: 0.25),
+                      blurRadius: 10,
+                    ),
+                  ]
                 : null,
           ),
           child: Row(
@@ -625,7 +635,7 @@ class _MobileNavItem extends StatelessWidget {
                 child: Icon(
                   item.icon,
                   size: 22,
-                  color: active ? DevColors.cream : DevColors.mutedFg,
+                  color: active ? DevColors.cream : DevColors.disabled,
                 ),
               ),
               const SizedBox(width: 12),

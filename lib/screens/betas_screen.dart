@@ -540,7 +540,7 @@ class _BetasHero extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF45271C), Color(0xFF2E1F19), Color(0xFF1F1714)],
+          colors: [Color(0xFF0A101D), Color(0xFF0F172A), Color(0xFF0A101D)],
         ),
         border: Border.all(color: DevColors.border),
         boxShadow: [
@@ -1505,7 +1505,7 @@ Widget _betaCoverFallback() {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xFF3A261C), Color(0xFF241A15)],
+        colors: [Color(0xFF0A101D), Color(0xFF0A101D)],
       ),
     ),
     child: Center(

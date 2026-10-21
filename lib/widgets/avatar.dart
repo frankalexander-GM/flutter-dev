@@ -17,12 +17,12 @@ class UserAvatar extends StatelessWidget {
 
   /// Gradientes de la web (AVATAR_GRADIENTS) aproximados a sRGB.
   static const _grads = [
-    [Color(0xFF9E4B45), Color(0xFFA97C52)],
-    [Color(0xFF9E4B45), Color(0xFF7E3440)],
-    [Color(0xFFE0A34E), Color(0xFF9C6B3A)],
-    [Color(0xFF9A9A54), Color(0xFFA97C52)],
-    [Color(0xFF9E4B45), Color(0xFF7E3440)],
-    [Color(0xFFC99862), Color(0xFFA97C52)],
+    [Color(0xFF1D4ED8), Color(0xFF0EA5E9)],
+    [Color(0xFF1D4ED8), Color(0xFF6D28D9)],
+    [Color(0xFF38BDF8), Color(0xFF8B5CF6)],
+    [Color(0xFF22D3EE), Color(0xFF0EA5E9)],
+    [Color(0xFF1D4ED8), Color(0xFF6D28D9)],
+    [Color(0xFF7DD3FC), Color(0xFF0EA5E9)],
   ];
 
   @override

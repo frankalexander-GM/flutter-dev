@@ -39,9 +39,7 @@ class MediaService {
   ///
   /// Devuelve `null` si el usuario cancela. Lanza [ApiException] con el
   /// mensaje del backend si el archivo no es válido.
-  static Future<UploadedMedia?> pickAndUpload({
-    bool allowVideo = false,
-  }) async {
+  static Future<UploadedMedia?> pickAndUpload({bool allowVideo = false}) async {
     final file = await _pickFile(allowVideo: allowVideo);
     if (file == null) return null;
     return upload(file);
@@ -86,11 +84,8 @@ class MediaService {
     );
     if (result.isEmpty) return null;
     final picked = result.first;
-    return LocalMedia(
-      name: picked.name,
-      bytes: await picked.xFile.readAsBytes(),
-      size: picked.lengthSync() ?? 0,
-    );
+    final bytes = await picked.xFile.readAsBytes();
+    return LocalMedia(name: picked.name, bytes: bytes, size: bytes.length);
   }
 }
 

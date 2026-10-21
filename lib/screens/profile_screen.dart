@@ -1,5 +1,6 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -12,13 +13,13 @@ import '../services/post_service.dart';
 import '../services/security_service.dart';
 import '../services/user_service.dart';
 import '../theme.dart';
-import '../utils/dev_link.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/post_card.dart';
 import '../widgets/profile_cards.dart';
 import '../widgets/profile_edit_sheet.dart';
 import '../widgets/profile_followers_sheet.dart';
 import '../widgets/profile_header.dart';
+import '../widgets/share_sheet.dart';
 
 /// Perfil de usuario con las 5 pestañas del PRD:
 /// Publicaciones · Juegos · Multimedia · Me gusta · Acerca de.
@@ -29,11 +30,15 @@ class ProfileScreen extends StatefulWidget {
   /// Abre el diálogo de ajustes del perfil al entrar (para el perfil propio).
   final bool openSettings;
 
+  /// Abre el compositor de publicaciones desde el estado vacío del perfil.
+  final Future<void> Function()? onCreatePost;
+
   const ProfileScreen({
     super.key,
     required this.userId,
     this.initialTab = 0,
     this.openSettings = false,
+    this.onCreatePost,
   });
 
   @override
@@ -245,8 +250,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       _profile = _copyProfile(
         profile,
         isFollowing: !wasFollowing,
-        followersCount:
-            profile.followersCount + (wasFollowing ? -1 : 1),
+        followersCount: profile.followersCount + (wasFollowing ? -1 : 1),
       );
     });
 
@@ -264,7 +268,11 @@ class _ProfileScreenState extends State<ProfileScreen>
               : profile.followersCount,
         );
       });
-      _toast(following ? 'Ahora sigues a @${profile.username}' : 'Dejaste de seguir a @${profile.username}');
+      _toast(
+        following
+            ? 'Ahora sigues a @${profile.username}'
+            : 'Dejaste de seguir a @${profile.username}',
+      );
     } catch (e) {
       if (!mounted) return;
       // Revertir si el backend rechaza.
@@ -320,7 +328,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         await SecurityService.block(profile.id);
       }
       if (!mounted) return;
-      setState(() => _profile = _copyProfile(_profile!, isBlocked: !wasBlocked));
+      setState(
+        () => _profile = _copyProfile(_profile!, isBlocked: !wasBlocked),
+      );
       _toast(wasBlocked ? 'Usuario desbloqueado' : 'Usuario bloqueado');
     } catch (e) {
       if (!mounted) return;
@@ -331,11 +341,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _shareProfile() async {
     final profile = _profile;
     if (profile == null) return;
-    final link = DevLink.profileUrl(profile.username);
-    final text = 'Perfil de @${profile.username} en DevPlay\n$link';
-    await Clipboard.setData(ClipboardData(text: text));
-    if (!mounted) return;
-    _toast('Enlace del perfil copiado');
+    final message = await showProfileShareSheet(context, profile: profile);
+    if (!mounted || message == null) return;
+    _toast(message);
   }
 
   void _openFollowers({required bool followers}) {
@@ -399,8 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         backgroundColor: DevColors.card,
         elevation: 0,
         actions: [
-          if (profile != null && !isOwn)
-            _buildOptionsMenu(profile),
+          if (profile != null && !isOwn) _buildOptionsMenu(profile),
           if (isOwn)
             IconButton(
               tooltip: 'Editar perfil',
@@ -416,9 +423,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           : profile == null
           ? const Center(child: Text('No se encontró el perfil'))
           : _buildBody(profile, isOwn),
-      bottomNavigationBar: _isLoading || profile == null
-          ? null
-          : _buildTabBar(profile),
     );
   }
 
@@ -457,9 +461,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             dense: true,
             contentPadding: EdgeInsets.zero,
             leading: Icon(
-              profile.isBlocked
-                  ? Icons.lock_open_rounded
-                  : Icons.block_rounded,
+              profile.isBlocked ? Icons.lock_open_rounded : Icons.block_rounded,
               size: 18,
               color: profile.isBlocked
                   ? DevColors.foreground
@@ -615,29 +617,49 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildTabBar(ProfileUser profile) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: DevColors.card,
-        border: Border(top: BorderSide(color: DevColors.border)),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        tabAlignment: TabAlignment.start,
-        indicatorColor: DevColors.primary,
-        labelColor: DevColors.primary,
-        unselectedLabelColor: DevColors.mutedFg,
-        labelStyle: DevTheme.body(size: 12.5, w: FontWeight.w600),
-        tabs: ProfileTab.values
-            .map(
-              (t) => Tab(
-                icon: Icon(t.icon, size: 19),
-                text: t.label,
-                height: 52,
-              ),
-            )
-            .toList(),
+  Widget _buildTabBar() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: DevColors.card.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: const Color(0xFF1E293B).withValues(alpha: 0.8),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: ListenableBuilder(
+            listenable: _tabController,
+            builder: (context, _) {
+              final selected = _tabController.index;
+              return TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                dividerColor: Colors.transparent,
+                indicator: const _GlowUnderline(),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding: const EdgeInsets.symmetric(horizontal: 10),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+                tabs: ProfileTab.values
+                    .map(
+                      (t) => Tab(
+                        height: 54,
+                        child: _ProfileTabItem(
+                          icon: t.icon,
+                          label: t.label,
+                          selected: selected == t.index,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -664,8 +686,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             onPosts: () => _goToTab(ProfileTab.posts),
             onGames: () => _goToTab(ProfileTab.games),
             onShare: _shareProfile,
+            tabs: _buildTabBar(),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           _buildTabContent(profile, isOwn),
         ],
       ),
@@ -683,11 +706,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.block_rounded,
-              size: 48,
-              color: DevColors.mutedFg,
-            ),
+            const Icon(Icons.block_rounded, size: 48, color: DevColors.mutedFg),
             const SizedBox(height: 14),
             Text('Perfil no disponible', style: DevTheme.display(size: 16)),
             const SizedBox(height: 8),
@@ -723,12 +742,20 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildPostsTab() {
     final posts = _posts;
     if (posts.isEmpty) {
+      final canCreate = _isOwnProfile && widget.onCreatePost != null;
       return _buildEmptyState(
         icon: Icons.article_outlined,
         title: 'Sin publicaciones aún',
         description: _isOwnProfile
             ? 'Comparte tu primer juego, avance o idea con la comunidad.'
             : 'Este usuario todavía no ha publicado nada.',
+        actionLabel: canCreate ? 'Crear primera publicación' : null,
+        onAction: canCreate
+            ? () async {
+                await widget.onCreatePost!();
+                if (mounted) await _load(refresh: true);
+              }
+            : null,
       );
     }
     return Column(
@@ -810,10 +837,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                 childAspectRatio: 1,
               ),
               itemCount: _media.length,
-              itemBuilder: (_, i) => MediaTile(
-                media: _media[i],
-                onTap: () => _openMedia(i),
-              ),
+              itemBuilder: (_, i) =>
+                  MediaTile(media: _media[i], onTap: () => _openMedia(i)),
             );
           },
         ),
@@ -952,7 +977,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       return _buildEmptyState(
         icon: Icons.favorite_outline_rounded,
         title: 'Sin publicaciones marcadas',
-        description: 'Las publicaciones que le gusten a este usuario '
+        description:
+            'Las publicaciones que le gusten a este usuario '
             'aparecerán aquí, según sus preferencias de privacidad.',
       );
     }
@@ -984,10 +1010,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           AboutBlock(
             title: 'Rol',
             icon: Icons.work_outline_rounded,
-            child: Text(
-              profile.profession!,
-              style: DevTheme.body(size: 14),
-            ),
+            child: Text(profile.profession!, style: DevTheme.body(size: 14)),
           ),
         if (profile.tags != null && profile.tags!.isNotEmpty)
           AboutBlock(
@@ -1050,8 +1073,18 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   static String _formatJoinDate(DateTime date) {
     const months = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
     ];
     return '${date.day} de ${months[date.month - 1]} de ${date.year}';
   }
@@ -1136,9 +1169,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (!mounted) return;
       setState(() => _isPrivate = next);
       _toast(
-        next
-            ? 'Tu perfil ahora es privado'
-            : 'Tu perfil ahora es público',
+        next ? 'Tu perfil ahora es privado' : 'Tu perfil ahora es público',
       );
     } catch (e) {
       if (!mounted) return;
@@ -1152,6 +1183,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     required IconData icon,
     required String title,
     required String description,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
@@ -1161,16 +1194,241 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 44, color: DevColors.muted),
+              _PulsingGlowIcon(icon: icon),
               const SizedBox(height: 12),
-              Text(title, style: DevTheme.body(color: DevColors.mutedFg)),
+              Text(
+                title,
+                style: DevTheme.body(
+                  size: 15,
+                  w: FontWeight.w600,
+                  color: DevColors.foreground,
+                ),
+              ),
               const SizedBox(height: 6),
               Text(
                 description,
                 style: DevTheme.body(size: 12, color: DevColors.mutedFg),
                 textAlign: TextAlign.center,
               ),
+              if (actionLabel != null && onAction != null) ...[
+                const SizedBox(height: 16),
+                _NeonCta(label: actionLabel, onTap: onAction),
+              ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ícono de estado vacío con pulso y resplandor cian.
+class _PulsingGlowIcon extends StatefulWidget {
+  final IconData icon;
+
+  const _PulsingGlowIcon({required this.icon});
+
+  @override
+  State<_PulsingGlowIcon> createState() => _PulsingGlowIconState();
+}
+
+class _PulsingGlowIconState extends State<_PulsingGlowIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _pulse = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeInOut,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, _) {
+        final t = _pulse.value;
+        return Transform.scale(
+          scale: 1 + 0.045 * t,
+          child: Icon(
+            widget.icon,
+            size: 48,
+            color: DevColors.accentCyan.withValues(alpha: 0.6 + 0.2 * t),
+            shadows: [
+              Shadow(
+                color: DevColors.accentCyan.withValues(alpha: 0.25 + 0.3 * t),
+                blurRadius: 16 + 10 * t,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Pestaña con icono y label que reacciona al hover y a la selección.
+class _ProfileTabItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+
+  const _ProfileTabItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+  });
+
+  @override
+  State<_ProfileTabItem> createState() => _ProfileTabItemState();
+}
+
+class _ProfileTabItemState extends State<_ProfileTabItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.selected
+        ? DevColors.accentCyan
+        : _hovered
+        ? DevColors.mutedFg
+        : DevColors.disabled;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        offset: Offset(0, _hovered && !widget.selected ? -0.025 : 0),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TweenAnimationBuilder<Color?>(
+                tween: ColorTween(end: color),
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                builder: (context, animated, _) =>
+                    Icon(widget.icon, size: 18, color: animated ?? color),
+              ),
+              const SizedBox(height: 4),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                style: DevTheme.body(
+                  size: 12.5,
+                  w: widget.selected ? FontWeight.w700 : FontWeight.w500,
+                  color: color,
+                ),
+                child: Text(widget.label),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Línea inferior cian con resplandor para la pestaña activa.
+class _GlowUnderline extends Decoration {
+  const _GlowUnderline();
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) {
+    return _GlowUnderlinePainter();
+  }
+}
+
+class _GlowUnderlinePainter extends BoxPainter {
+  static const double _lineHeight = 3;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final size = configuration.size;
+    if (size == null || size.width <= 0 || size.height <= 0) return;
+
+    final rect = Rect.fromLTWH(
+      offset.dx,
+      offset.dy + size.height - _lineHeight,
+      size.width,
+      _lineHeight,
+    );
+    final rrect = RRect.fromRectAndRadius(
+      rect,
+      const Radius.circular(_lineHeight / 2),
+    );
+
+    final glow = Paint()
+      ..color = DevColors.accentCyan.withValues(alpha: 0.75)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+    canvas.drawRRect(rrect, glow);
+
+    canvas.drawRRect(rrect, Paint()..color = DevColors.accentCyan);
+  }
+}
+
+/// CTA naranja con brillo suave al pasar el cursor.
+class _NeonCta extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _NeonCta({required this.label, required this.onTap});
+
+  @override
+  State<_NeonCta> createState() => _NeonCtaState();
+}
+
+class _NeonCtaState extends State<_NeonCta> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        decoration: BoxDecoration(
+          color: DevColors.accentOrange,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: DevColors.orangeGlow(alpha: _hovered ? 0.5 : 0.22),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add_rounded, size: 18, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.label,
+                    style: DevTheme.body(
+                      size: 13,
+                      w: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

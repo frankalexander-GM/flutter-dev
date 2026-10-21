@@ -42,8 +42,15 @@ class DevLink {
 
   /// Construye la URL pública de un perfil.
   static String profileUrl(String username, {String? origin}) {
-    final base = origin ?? Uri.base.origin;
+    final base = origin ?? _currentOrigin();
     return '$base/?$userParam=$username';
+  }
+
+  /// Origen del navegador, con reserva si no es http(s) (p. ej. en tests).
+  static String _currentOrigin() {
+    final uri = Uri.base;
+    if (uri.scheme == 'http' || uri.scheme == 'https') return uri.origin;
+    return 'https://devplay.app';
   }
 
   /// Resuelve el username de un enlace a su id de usuario real.

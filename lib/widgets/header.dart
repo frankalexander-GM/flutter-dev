@@ -36,12 +36,14 @@ class DevHeader extends StatelessWidget {
       height: 62,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: const BoxDecoration(
-        color: DevColors.card,
-        border: Border(
-          bottom: BorderSide(color: DevColors.border, width: 1),
-        ),
+        color: DevColors.surface,
+        border: Border(bottom: BorderSide(color: DevColors.border, width: 1)),
         boxShadow: [
-          BoxShadow(color: Color(0x33000000), blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: Row(
@@ -49,7 +51,11 @@ class DevHeader extends StatelessWidget {
           // Menú lateral / Drawer
           if (showMenu)
             IconButton(
-              icon: const Icon(Icons.menu_rounded, size: 24, color: DevColors.foreground),
+              icon: const Icon(
+                Icons.menu_rounded,
+                size: 24,
+                color: DevColors.foreground,
+              ),
               onPressed: onMenuTap,
               tooltip: 'Menú',
             )
@@ -65,13 +71,17 @@ class DevHeader extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
+                    colors: [Color(0xFF00F0FF), Color(0xFF8B5CF6)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   border: Border.all(color: DevColors.gold35),
                 ),
-                child: const Icon(Icons.sports_esports_rounded, size: 20, color: DevColors.cream),
+                child: const Icon(
+                  Icons.sports_esports_rounded,
+                  size: 20,
+                  color: DevColors.cream,
+                ),
               ),
               const SizedBox(width: 8),
               Text(
@@ -93,16 +103,26 @@ class DevHeader extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.search_rounded, size: 18, color: DevColors.mutedFg),
+                  const Icon(
+                    Icons.search_rounded,
+                    size: 18,
+                    color: DevColors.mutedFg,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
-                      style: DevTheme.body(size: 13, color: DevColors.foreground),
+                      style: DevTheme.body(
+                        size: 13,
+                        color: DevColors.foreground,
+                      ),
                       textInputAction: TextInputAction.search,
                       onSubmitted: onSearch,
                       decoration: InputDecoration(
                         hintText: 'Buscar @usuario…',
-                        hintStyle: DevTheme.bodySecondary(size: 13, color: DevColors.mutedFg),
+                        hintStyle: DevTheme.bodySecondary(
+                          size: 13,
+                          color: DevColors.mutedFg,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
@@ -121,22 +141,33 @@ class DevHeader extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications_none_rounded, size: 24, color: DevColors.foreground),
+                const Icon(
+                  Icons.notifications_none_rounded,
+                  size: 24,
+                  color: DevColors.foreground,
+                ),
                 if (unreadCount > 0)
                   Positioned(
                     right: -8,
                     top: -6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                            colors: [DevColors.wine, Color(0xFFB85F3A)]),
+                          colors: [DevColors.wine, Color(0xFF3B82F6)],
+                        ),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         unreadCount > 99 ? '99+' : '$unreadCount',
                         style: DevTheme.body(
-                            size: 9, w: FontWeight.w700, color: Colors.white),
+                          size: 9,
+                          w: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),

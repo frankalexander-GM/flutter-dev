@@ -12,7 +12,8 @@ class StoreScreen extends StatefulWidget {
   State<StoreScreen> createState() => _StoreScreenState();
 }
 
-class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStateMixin {
+class _StoreScreenState extends State<StoreScreen>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   StoreItemsResponse? _catalog;
   BalanceResponse? _balance;
@@ -80,11 +81,16 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
           unselectedLabelColor: DevColors.mutedFg,
           labelStyle: DevTheme.body(size: 13, w: FontWeight.w600),
           isScrollable: true,
-          tabs: _tabs.map((t) => Tab(icon: Icon(t.$2, size: 20), text: t.$1)).toList(),
+          tabs: _tabs
+              .map((t) => Tab(icon: Icon(t.$2, size: 20), text: t.$1))
+              .toList(),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: DevColors.foreground),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: DevColors.foreground,
+            ),
             onPressed: _loadAll,
             tooltip: 'Recargar',
           ),
@@ -93,25 +99,25 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _errorState()
-              : Column(
-                  children: [
-                    // Header con DevCoins
-                    _buildCoinsHeader(),
-                    // Contenido por tabs
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildCategoryTab('powerup'),
-                          _buildCategoryTab('avatar'),
-                          _buildPremiumTab(),
-                          _buildMyItemsTab(),
-                        ],
-                      ),
-                    ),
-                  ],
+          ? _errorState()
+          : Column(
+              children: [
+                // Header con DevCoins
+                _buildCoinsHeader(),
+                // Contenido por tabs
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildCategoryTab('powerup'),
+                      _buildCategoryTab('avatar'),
+                      _buildPremiumTab(),
+                      _buildMyItemsTab(),
+                    ],
+                  ),
                 ),
+              ],
+            ),
     );
   }
 
@@ -122,13 +128,24 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off_rounded, size: 48, color: DevColors.mutedFg),
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 48,
+              color: DevColors.mutedFg,
+            ),
             const SizedBox(height: 16),
             Text('Error cargando tienda', style: DevTheme.display(size: 16)),
             const SizedBox(height: 8),
-            Text(_error!, style: DevTheme.body(size: 13, color: DevColors.destructive), textAlign: TextAlign.center),
+            Text(
+              _error!,
+              style: DevTheme.body(size: 13, color: DevColors.destructive),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loadAll, child: const Text('Reintentar')),
+            ElevatedButton(
+              onPressed: _loadAll,
+              child: const Text('Reintentar'),
+            ),
           ],
         ),
       ),
@@ -147,20 +164,33 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.monetization_on_rounded, color: Colors.white, size: 24),
+            child: const Icon(
+              Icons.monetization_on_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('DevCoins', style: DevTheme.body(size: 12, color: DevColors.mutedFg)),
+                Text(
+                  'DevCoins',
+                  style: DevTheme.body(size: 12, color: DevColors.mutedFg),
+                ),
                 Text(
                   '${_balance?.devCoins ?? 0}',
-                  style: DevTheme.display(size: 24, w: FontWeight.w700, color: DevColors.gold),
+                  style: DevTheme.display(
+                    size: 24,
+                    w: FontWeight.w700,
+                    color: DevColors.gold,
+                  ),
                 ),
               ],
             ),
@@ -172,7 +202,9 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: DevColors.gold),
               foregroundColor: DevColors.gold,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
             ),
           ),
         ],
@@ -187,7 +219,12 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
     );
 
     if (category == null || category.items.isEmpty) {
-      return Center(child: Text('Sin items', style: DevTheme.body(color: DevColors.mutedFg)));
+      return Center(
+        child: Text(
+          'Sin items',
+          style: DevTheme.body(color: DevColors.mutedFg),
+        ),
+      );
     }
 
     return ListView.builder(
@@ -204,10 +241,15 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
 
   Widget _buildPremiumTab() {
     // Items de categoría "premium" o "subscription"
-    final premiumItems = _catalog?.categories
-        .expand((c) => c.items)
-        .where((item) => item.category == 'premium' || item.category == 'subscription')
-        .toList() ?? [];
+    final premiumItems =
+        _catalog?.categories
+            .expand((c) => c.items)
+            .where(
+              (item) =>
+                  item.category == 'premium' || item.category == 'subscription',
+            )
+            .toList() ??
+        [];
 
     if (premiumItems.isEmpty) {
       // Fallback a tiers hardcodeados si no hay en API
@@ -241,7 +283,9 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
             'Soporte prioritario',
             'Badge "Pro" en perfil',
           ],
-          gradient: const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)]),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00F0FF), Color(0xFF3B82F6)],
+          ),
           onSubscribe: () => _subscribe('Pro'),
         ),
         const SizedBox(height: 16),
@@ -257,7 +301,9 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
             'API access para bots',
             'Badge "Indie Dev"',
           ],
-          gradient: const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)]),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+          ),
           onSubscribe: () => _subscribe('Indie'),
         ),
       ],
@@ -271,11 +317,18 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_2_outlined, size: 64, color: DevColors.muted),
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 64,
+              color: DevColors.disabled,
+            ),
             const SizedBox(height: 16),
             Text('Sin items comprados', style: DevTheme.display(size: 16)),
             const SizedBox(height: 8),
-            Text('Tus compras aparecerán aquí', style: DevTheme.body(size: 13, color: DevColors.mutedFg)),
+            Text(
+              'Tus compras aparecerán aquí',
+              style: DevTheme.body(size: 13, color: DevColors.mutedFg),
+            ),
           ],
         ),
       );
@@ -291,7 +344,9 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
     showModalBottomSheet(
       context: context,
       backgroundColor: DevColors.card,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -323,7 +378,10 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
     }
     if (item.isOwned) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ya tienes "${item.name}"'), backgroundColor: DevColors.amber),
+        SnackBar(
+          content: Text('Ya tienes "${item.name}"'),
+          backgroundColor: DevColors.amber,
+        ),
       );
       return;
     }
@@ -333,12 +391,24 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
       builder: (_) => AlertDialog(
         backgroundColor: DevColors.card,
         title: Text('Comprar ${item.name}', style: DevTheme.display(size: 16)),
-        content: Text('Cuesta ${item.price} DevCoins. ¿Confirmas?', style: DevTheme.body(size: 14)),
+        content: Text(
+          'Cuesta ${item.price} DevCoins. ¿Confirmas?',
+          style: DevTheme.body(size: 14),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancelar', style: DevTheme.body(color: DevColors.mutedFg))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancelar',
+              style: DevTheme.body(color: DevColors.mutedFg),
+            ),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: DevColors.primary, foregroundColor: DevColors.primaryFg),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DevColors.primary,
+              foregroundColor: DevColors.primaryFg,
+            ),
             child: const Text('Comprar'),
           ),
         ],
@@ -350,17 +420,28 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
     try {
       final result = await StoreService.buyItem(item.id);
       if (result.success) {
-        setState(() => _balance = BalanceResponse(devCoins: result.newBalance, recentTransactions: _balance!.recentTransactions));
+        setState(
+          () => _balance = BalanceResponse(
+            devCoins: result.newBalance,
+            recentTransactions: _balance!.recentTransactions,
+          ),
+        );
         await _loadAll(); // recargar catálogo para actualizar isOwned
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result.message ?? '${item.name} comprado!'), backgroundColor: DevColors.consoleGreen),
+            SnackBar(
+              content: Text(result.message ?? '${item.name} comprado!'),
+              backgroundColor: DevColors.consoleGreen,
+            ),
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result.message ?? 'Error en la compra'), backgroundColor: DevColors.destructive),
+            SnackBar(
+              content: Text(result.message ?? 'Error en la compra'),
+              backgroundColor: DevColors.destructive,
+            ),
           );
         }
       }
@@ -379,15 +460,32 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
       builder: (_) => AlertDialog(
         backgroundColor: DevColors.card,
         title: Text('Suscribirse a $tier', style: DevTheme.display(size: 16)),
-        content: Text('Redirigiendo a Stripe... (demo)', style: DevTheme.body(size: 14)),
+        content: Text(
+          'Redirigiendo a Stripe... (demo)',
+          style: DevTheme.body(size: 14),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar', style: DevTheme.body(color: DevColors.mutedFg))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: DevTheme.body(color: DevColors.mutedFg),
+            ),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Suscripción $tier activada (demo)'), backgroundColor: DevColors.consoleGreen));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Suscripción $tier activada (demo)'),
+                  backgroundColor: DevColors.consoleGreen,
+                ),
+              );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: DevColors.primary, foregroundColor: DevColors.primaryFg),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DevColors.primary,
+              foregroundColor: DevColors.primaryFg,
+            ),
             child: const Text('Confirmar'),
           ),
         ],
@@ -397,7 +495,10 @@ class _StoreScreenState extends State<StoreScreen> with SingleTickerProviderStat
 
   void _showInsufficientCoins() {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('DevCoins insuficientes'), backgroundColor: DevColors.destructive),
+      SnackBar(
+        content: Text('DevCoins insuficientes'),
+        backgroundColor: DevColors.destructive,
+      ),
     );
   }
 }
@@ -418,34 +519,60 @@ class _StoreItemCard extends StatelessWidget {
 
   Color _rarityColor(String rarity) {
     switch (rarity) {
-      case 'legendary': return const Color(0xFFE8A838);
-      case 'epic': return const Color(0xFF9B59E8);
-      case 'rare': return const Color(0xFF4A9F9A);
-      default: return DevColors.mutedFg;
+      case 'legendary':
+        return const Color(0xFFE8A838);
+      case 'epic':
+        return const Color(0xFF9B59E8);
+      case 'rare':
+        return const Color(0xFF4A9F9A);
+      default:
+        return DevColors.mutedFg;
     }
   }
 
   IconData _iconFromString(String iconName) {
     switch (iconName) {
-      case 'flash_on': return Icons.flash_on_rounded;
-      case 'star': return Icons.star_rounded;
-      case 'campaign': return Icons.campaign_rounded;
-      case 'shield': return Icons.shield_rounded;
-      case 'emoji_events': return Icons.emoji_events_rounded;
-      case 'science': return Icons.science_rounded;
-      case 'image': return Icons.image_rounded;
-      case 'verified': return Icons.verified_rounded;
-      case 'workspace_premium': return Icons.workspace_premium_rounded;
-      default: return Icons.shopping_bag_rounded;
+      case 'flash_on':
+        return Icons.flash_on_rounded;
+      case 'star':
+        return Icons.star_rounded;
+      case 'campaign':
+        return Icons.campaign_rounded;
+      case 'shield':
+        return Icons.shield_rounded;
+      case 'emoji_events':
+        return Icons.emoji_events_rounded;
+      case 'science':
+        return Icons.science_rounded;
+      case 'image':
+        return Icons.image_rounded;
+      case 'verified':
+        return Icons.verified_rounded;
+      case 'workspace_premium':
+        return Icons.workspace_premium_rounded;
+      default:
+        return Icons.shopping_bag_rounded;
     }
   }
 
   LinearGradient _gradientForRarity(String rarity) {
     switch (rarity) {
-      case 'legendary': return const LinearGradient(colors: [Color(0xFFE8A838), Color(0xFFC88818)]);
-      case 'epic': return const LinearGradient(colors: [Color(0xFF9B59E8), Color(0xFF7B39C8)]);
-      case 'rare': return const LinearGradient(colors: [Color(0xFF4A9F9A), Color(0xFF3A7A7A)]);
-      default: return const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)]);
+      case 'legendary':
+        return const LinearGradient(
+          colors: [Color(0xFFE8A838), Color(0xFFC88818)],
+        );
+      case 'epic':
+        return const LinearGradient(
+          colors: [Color(0xFF9B59E8), Color(0xFF7B39C8)],
+        );
+      case 'rare':
+        return const LinearGradient(
+          colors: [Color(0xFF4A9F9A), Color(0xFF3A7A7A)],
+        );
+      default:
+        return const LinearGradient(
+          colors: [Color(0xFF00F0FF), Color(0xFF3B82F6)],
+        );
     }
   }
 
@@ -460,14 +587,19 @@ class _StoreItemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: DevTheme.glassStrong(radius: 12).copyWith(
-        border: isOwned ? Border.all(color: DevColors.consoleGreen, width: 1.5) : Border.all(color: DevColors.border),
+        border: isOwned
+            ? Border.all(color: DevColors.consoleGreen, width: 1.5)
+            : Border.all(color: DevColors.border),
       ),
       child: Row(
         children: [
           Container(
             width: 56,
             height: 56,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), gradient: gradient),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: gradient,
+            ),
             child: Icon(iconData, size: 28, color: Colors.white),
           ),
           const SizedBox(width: 16),
@@ -477,19 +609,47 @@ class _StoreItemCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(item.name, style: DevTheme.body(size: 15, w: FontWeight.w700))),
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: DevTheme.body(size: 15, w: FontWeight.w700),
+                      ),
+                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: rarityColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
-                      child: Text(item.rarity.toUpperCase(), style: DevTheme.body(size: 9, w: FontWeight.w700, color: rarityColor)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: rarityColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        item.rarity.toUpperCase(),
+                        style: DevTheme.body(
+                          size: 9,
+                          w: FontWeight.w700,
+                          color: rarityColor,
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(item.description, style: DevTheme.body(size: 12, color: DevColors.mutedFg)),
+                Text(
+                  item.description,
+                  style: DevTheme.body(size: 12, color: DevColors.mutedFg),
+                ),
                 if (isOwned) ...[
                   const SizedBox(height: 4),
-                  Text('✓ Ya poseído', style: DevTheme.body(size: 11, w: FontWeight.w600, color: DevColors.consoleGreen)),
+                  Text(
+                    '✓ Ya poseído',
+                    style: DevTheme.body(
+                      size: 11,
+                      w: FontWeight.w600,
+                      color: DevColors.consoleGreen,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -499,22 +659,43 @@ class _StoreItemCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.monetization_on_rounded, size: 16, color: DevColors.gold),
+                  const Icon(
+                    Icons.monetization_on_rounded,
+                    size: 16,
+                    color: DevColors.gold,
+                  ),
                   const SizedBox(width: 4),
-                  Text('${item.price}', style: DevTheme.body(size: 15, w: FontWeight.w700, color: DevColors.gold)),
+                  Text(
+                    '${item.price}',
+                    style: DevTheme.body(
+                      size: 15,
+                      w: FontWeight.w700,
+                      color: DevColors.gold,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: (canAfford || isOwned) ? onBuy : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isOwned ? DevColors.consoleGreen : DevColors.primary,
+                  backgroundColor: isOwned
+                      ? DevColors.consoleGreen
+                      : DevColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   disabledBackgroundColor: DevColors.muted,
                 ),
-                child: Text(isOwned ? 'Poseído' : 'Comprar', style: DevTheme.body(size: 12, w: FontWeight.w600)),
+                child: Text(
+                  isOwned ? 'Poseído' : 'Comprar',
+                  style: DevTheme.body(size: 12, w: FontWeight.w600),
+                ),
               ),
             ],
           ),
@@ -532,25 +713,39 @@ class _MyItemCard extends StatelessWidget {
 
   Color _rarityColor(String rarity) {
     switch (rarity) {
-      case 'legendary': return const Color(0xFFE8A838);
-      case 'epic': return const Color(0xFF9B59E8);
-      case 'rare': return const Color(0xFF4A9F9A);
-      default: return DevColors.mutedFg;
+      case 'legendary':
+        return const Color(0xFFE8A838);
+      case 'epic':
+        return const Color(0xFF9B59E8);
+      case 'rare':
+        return const Color(0xFF4A9F9A);
+      default:
+        return DevColors.mutedFg;
     }
   }
 
   IconData _iconFromString(String iconName) {
     switch (iconName) {
-      case 'flash_on': return Icons.flash_on_rounded;
-      case 'star': return Icons.star_rounded;
-      case 'campaign': return Icons.campaign_rounded;
-      case 'shield': return Icons.shield_rounded;
-      case 'emoji_events': return Icons.emoji_events_rounded;
-      case 'science': return Icons.science_rounded;
-      case 'image': return Icons.image_rounded;
-      case 'verified': return Icons.verified_rounded;
-      case 'workspace_premium': return Icons.workspace_premium_rounded;
-      default: return Icons.shopping_bag_rounded;
+      case 'flash_on':
+        return Icons.flash_on_rounded;
+      case 'star':
+        return Icons.star_rounded;
+      case 'campaign':
+        return Icons.campaign_rounded;
+      case 'shield':
+        return Icons.shield_rounded;
+      case 'emoji_events':
+        return Icons.emoji_events_rounded;
+      case 'science':
+        return Icons.science_rounded;
+      case 'image':
+        return Icons.image_rounded;
+      case 'verified':
+        return Icons.verified_rounded;
+      case 'workspace_premium':
+        return Icons.workspace_premium_rounded;
+      default:
+        return Icons.shopping_bag_rounded;
     }
   }
 
@@ -570,7 +765,9 @@ class _MyItemCard extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              gradient: LinearGradient(colors: [rarityColor, rarityColor.withValues(alpha: 0.7)]),
+              gradient: LinearGradient(
+                colors: [rarityColor, rarityColor.withValues(alpha: 0.7)],
+              ),
             ),
             child: Icon(iconData, size: 24, color: Colors.white),
           ),
@@ -581,23 +778,52 @@ class _MyItemCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(item.name, style: DevTheme.body(size: 14, w: FontWeight.w600)),
+                    Text(
+                      item.name,
+                      style: DevTheme.body(size: 14, w: FontWeight.w600),
+                    ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(color: rarityColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
-                      child: Text(item.rarity.toUpperCase(), style: DevTheme.body(size: 9, w: FontWeight.w700, color: rarityColor)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: rarityColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        item.rarity.toUpperCase(),
+                        style: DevTheme.body(
+                          size: 9,
+                          w: FontWeight.w700,
+                          color: rarityColor,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                Text(item.description, style: DevTheme.body(size: 11, color: DevColors.mutedFg)),
+                Text(
+                  item.description,
+                  style: DevTheme.body(size: 11, color: DevColors.mutedFg),
+                ),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: DevColors.consoleGreen.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
-            child: Text('POSEÍDO', style: DevTheme.body(size: 9, w: FontWeight.w700, color: DevColors.consoleGreen)),
+            decoration: BoxDecoration(
+              color: DevColors.consoleGreen.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              'POSEÍDO',
+              style: DevTheme.body(
+                size: 9,
+                w: FontWeight.w700,
+                color: DevColors.consoleGreen,
+              ),
+            ),
           ),
         ],
       ),
@@ -610,7 +836,11 @@ class _CoinPack extends StatelessWidget {
   final String price;
   final String bonus;
 
-  const _CoinPack({required this.coins, required this.price, required this.bonus});
+  const _CoinPack({
+    required this.coins,
+    required this.price,
+    required this.bonus,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -622,21 +852,48 @@ class _CoinPack extends StatelessWidget {
         decoration: DevTheme.glassStrong(radius: 12),
         child: Column(
           children: [
-            Text('$total', style: DevTheme.display(size: 24, w: FontWeight.w700, color: DevColors.gold)),
-            Text('DevCoins', style: DevTheme.body(size: 12, color: DevColors.mutedFg)),
+            Text(
+              '$total',
+              style: DevTheme.display(
+                size: 24,
+                w: FontWeight.w700,
+                color: DevColors.gold,
+              ),
+            ),
+            Text(
+              'DevCoins',
+              style: DevTheme.body(size: 12, color: DevColors.mutedFg),
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: DevColors.consoleGreen.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
-              child: Text(bonus, style: DevTheme.body(size: 10, w: FontWeight.w700, color: DevColors.consoleGreen)),
+              decoration: BoxDecoration(
+                color: DevColors.consoleGreen.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                bonus,
+                style: DevTheme.body(
+                  size: 10,
+                  w: FontWeight.w700,
+                  color: DevColors.consoleGreen,
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             Text(price, style: DevTheme.display(size: 16, w: FontWeight.w700)),
             const SizedBox(height: 8),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(backgroundColor: DevColors.primary, foregroundColor: DevColors.primaryFg, minimumSize: const Size.fromHeight(36)),
-              child: Text('Comprar', style: DevTheme.body(size: 12, w: FontWeight.w600)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DevColors.primary,
+                foregroundColor: DevColors.primaryFg,
+                minimumSize: const Size.fromHeight(36),
+              ),
+              child: Text(
+                'Comprar',
+                style: DevTheme.body(size: 12, w: FontWeight.w600),
+              ),
             ),
           ],
         ),
@@ -674,34 +931,60 @@ class _PremiumTierCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), gradient: gradient),
-                child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 28),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: gradient,
+                ),
+                child: const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: DevTheme.display(size: 20, w: FontWeight.w700)),
-                    Text(price, style: DevTheme.body(size: 14, w: FontWeight.w600, color: DevColors.gold)),
+                    Text(
+                      name,
+                      style: DevTheme.display(size: 20, w: FontWeight.w700),
+                    ),
+                    Text(
+                      price,
+                      style: DevTheme.body(
+                        size: 14,
+                        w: FontWeight.w600,
+                        color: DevColors.gold,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(description, style: DevTheme.body(size: 13, color: DevColors.mutedFg)),
+          Text(
+            description,
+            style: DevTheme.body(size: 13, color: DevColors.mutedFg),
+          ),
           const SizedBox(height: 16),
-          ...features.map((f) => Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, size: 16, color: DevColors.consoleGreen),
-                const SizedBox(width: 8),
-                Expanded(child: Text(f, style: DevTheme.body(size: 13))),
-              ],
+          ...features.map(
+            (f) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: DevColors.consoleGreen,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(f, style: DevTheme.body(size: 13))),
+                ],
+              ),
             ),
-          )),
+          ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -711,9 +994,14 @@ class _PremiumTierCard extends StatelessWidget {
                 backgroundColor: gradient.colors.first,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: Text('Suscribirse a $name', style: DevTheme.body(size: 14, w: FontWeight.w700)),
+              child: Text(
+                'Suscribirse a $name',
+                style: DevTheme.body(size: 14, w: FontWeight.w700),
+              ),
             ),
           ),
         ],

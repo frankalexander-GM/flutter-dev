@@ -84,9 +84,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ProfileScreen(userId: id)),
-    );
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: id)));
   }
 
   @override
@@ -182,8 +181,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user != null) {
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) =>
-              ProfileScreen(userId: user.id, initialTab: initialTab),
+          builder: (_) => ProfileScreen(
+            userId: user.id,
+            initialTab: initialTab,
+            onCreatePost: _onCreatePost,
+          ),
         ),
       );
       if (mounted) _load();
@@ -200,7 +202,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ProfileScreen(userId: user.id, openSettings: true),
+        builder: (_) => ProfileScreen(
+          userId: user.id,
+          openSettings: true,
+          onCreatePost: _onCreatePost,
+        ),
       ),
     );
     if (mounted) _load();
@@ -219,8 +225,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openDrawer() => setState(() => _drawerOpen = true);
   void _closeDrawer() => setState(() => _drawerOpen = false);
 
-  void _onCreatePost() {
-    _CreateDock(onCreated: _load)._open(context);
+  Future<void> _onCreatePost() async {
+    await _CreateDock(onCreated: _load)._open(context);
   }
 
   Future<void> _onCreateBeta() async {
@@ -272,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFB8862E), Color(0xFF9D6B1F)],
+                    colors: [Color(0xFF6D28D9), Color(0xFF0EA5E9)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -771,13 +777,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 12),
-                        OutlinedButton.icon(
+                        ElevatedButton.icon(
                           onPressed: _onCreatePost,
                           icon: const Icon(Icons.add_rounded, size: 16),
                           label: const Text('Publicar mi juego'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: DevColors.primary,
-                            side: const BorderSide(color: DevColors.primary),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: DevColors.accentOrange,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shadowColor: DevColors.accentOrange.withValues(
+                              alpha: 0.4,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
@@ -1223,7 +1233,7 @@ class _HomeHero extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF3A2419), Color(0xFF2A1F1A), Color(0xFF1F1714)],
+          colors: [Color(0xFF0A101D), Color(0xFF0F172A), Color(0xFF0A101D)],
         ),
         border: Border.all(color: DevColors.border),
         boxShadow: [
@@ -1273,9 +1283,9 @@ class _HomeHero extends StatelessWidget {
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
                             colors: [
-                              Color(0x8C1C1411),
-                              Color(0x591C1411),
-                              Color(0x001C1411),
+                              Color(0x8C060B14),
+                              Color(0x59060B14),
+                              Color(0x00060B14),
                             ],
                             stops: [0.0, 0.58, 1.0],
                           ),
@@ -1299,9 +1309,9 @@ class _HomeHero extends StatelessWidget {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      const Color(0x2E1C1411),
-                      const Color(0x1A1C1411),
-                      const Color(0x0D1C1411),
+                      const Color(0x2E060B14),
+                      const Color(0x1A060B14),
+                      const Color(0x0D060B14),
                       Colors.transparent,
                     ],
                     stops: const [0.0, 0.45, 0.72, 1.0],
@@ -1319,9 +1329,9 @@ class _HomeHero extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const Color(0x1F1C1411),
+                      const Color(0x1F060B14),
                       Colors.transparent,
-                      const Color(0x661C1411),
+                      const Color(0x66060B14),
                     ],
                     stops: const [0.0, 0.5, 1.0],
                   ),
@@ -1527,10 +1537,11 @@ class _HomeHero extends StatelessWidget {
         ),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: DevColors.primary,
-        foregroundColor: DevColors.primaryFg,
+        backgroundColor: DevColors.accentOrange,
+        foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 22),
         elevation: 0,
+        shadowColor: DevColors.accentOrange.withValues(alpha: 0.4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
       ),
     );
@@ -1864,15 +1875,9 @@ class _CreateDock extends StatelessWidget {
         height: 46,
         padding: const EdgeInsets.symmetric(horizontal: 22),
         decoration: BoxDecoration(
-          gradient: DevTheme.btnGradient(),
+          color: DevColors.accentOrange,
           borderRadius: BorderRadius.circular(999),
-          boxShadow: [
-            BoxShadow(
-              color: DevColors.gold.withValues(alpha: 0.4),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: DevColors.orangeGlow(),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2138,8 +2143,7 @@ class _ComposeDialogState extends State<_ComposeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final canPublish =
-        _controller.text.trim().isNotEmpty || _media.isNotEmpty;
+    final canPublish = _controller.text.trim().isNotEmpty || _media.isNotEmpty;
 
     return AlertDialog(
       backgroundColor: DevColors.card,
@@ -2157,7 +2161,10 @@ class _ComposeDialogState extends State<_ComposeDialog> {
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               hintText: '¿Qué está pasando en tu proyecto?',
-              hintStyle: DevTheme.bodySecondary(size: 13, color: DevColors.mutedFg),
+              hintStyle: DevTheme.bodySecondary(
+                size: 13,
+                color: DevColors.mutedFg,
+              ),
               filled: true,
               fillColor: DevColors.cardRaised,
               border: OutlineInputBorder(
@@ -2201,7 +2208,7 @@ class _ComposeDialogState extends State<_ComposeDialog> {
                         onTap: () => setState(() => _media.removeAt(i)),
                         child: const CircleAvatar(
                           radius: 9,
-                          backgroundColor: Color(0xCC1C1411),
+                          backgroundColor: Color(0xCC060B14),
                           child: Icon(
                             Icons.close_rounded,
                             size: 12,
@@ -2229,8 +2236,8 @@ class _ComposeDialogState extends State<_ComposeDialog> {
               _uploading
                   ? 'Subiendo...'
                   : _media.length >= 4
-                      ? 'Maximo 4 archivos'
-                      : 'Anadir imagen o video',
+                  ? 'Maximo 4 archivos'
+                  : 'Anadir imagen o video',
               style: DevTheme.body(size: 12.5, color: DevColors.primary),
             ),
           ),
@@ -2248,12 +2255,12 @@ class _ComposeDialogState extends State<_ComposeDialog> {
           onPressed: (_uploading || !canPublish)
               ? null
               : () => Navigator.pop(
-                    context,
-                    _ComposeResult(
-                      content: _controller.text.trim(),
-                      media: List.of(_media),
-                    ),
+                  context,
+                  _ComposeResult(
+                    content: _controller.text.trim(),
+                    media: List.of(_media),
                   ),
+                ),
           style: ElevatedButton.styleFrom(
             backgroundColor: DevColors.primary,
             foregroundColor: DevColors.primaryFg,

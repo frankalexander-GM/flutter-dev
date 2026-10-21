@@ -1,70 +1,105 @@
 import 'package:flutter/material.dart';
 
-/// Tokens de diseño de DevPlay — Paleta PRD "Descubrir" actualizada.
+/// Tokens de diseño de DevPlay — Paleta "Degradado Sci-Fi".
 ///
 /// Paleta oficial:
-/// - Primary (Terracota):     #C66E41 — Botones principales, chips activos, acentos
-/// - Background:              #1C1411 — Scaffold principal
-/// - Surface/Card:            #2A1F1A — Contenedores, tarjetas, paneles
-/// - Border:                  #3C2B23 — Bordes, divisores, chips inactivos
-/// - Text Primary:            #FBF3E4 — Títulos, cuerpo principal
-/// - Text Secondary:          #B6A69B — Subtítulos, metadata, hints
-/// - Alert/Activity:          #E06C75 — Rojo suave para alertas y actividad en vivo
-/// - Gold/Accent (legacy):    #D9A441 — Badges, gradientes secundarios
+/// - Background:              #060B14 — Azul noche ultra oscuro
+/// - Surface (sidebar/nav):   #0A101D — Paneles y barras
+/// - Card:                    #0F172A — Contenedores, tarjetas, paneles
+/// - Border:                  rgba(56,189,248,0.15) — Bordes fríos con tinte cyan
+/// - Primary (azul):          #3B82F6 — Botones y estados activos
+/// - Accent cyan:             #00F0FF — Íconos activos, bordes glowing
+/// - Accent orange (CTA):     #FF5E00 — Crear publicación / acciones de impacto
+/// - Gradiente Sci-Fi:        #00F0FF → #3B82F6 → #8B5CF6
+/// - Text Primary:            #F8FAFC — Títulos y cuerpo
+/// - Text Secondary:          #94A3B8 — Subtítulos, metadata, hints
+/// - Muted/Disabled:          #64748B
+/// - Destructive:             #F87171 — Alertas y actividad
 abstract final class DevColors {
   // ── Paleta semántica (dark) ────────────────────────────────
-  static const background     = Color(0xFF1C1411); // Scaffold / fondo principal
-  static const foreground     = Color(0xFFFBF3E4); // Texto principal
-  static const card           = Color(0xFF2A1F1A); // Contenedores y tarjetas
-  static const cardRaised     = Color(0xFF32261F); // Superficies elevadas / hover
-  static const primary        = Color(0xFFC66E41); // Terracota — botones, chips activos
-  static const primaryFg      = Color(0xFFFFFFFF); // Texto sobre primary
-  static const secondary      = Color(0xFF3C2B23); // Secundario / bordes activos
-  static const secondaryFg    = Color(0xFFB6A69B); // Texto sobre secondary
-  static const muted          = Color(0xFF2E221B); // Elementos sutiles
-  static const mutedFg        = Color(0xFFB6A69B); // Texto secundario / subtítulos
-  static const accent         = Color(0xFF3A2E27); // Acento terciario
-  static const accentFg       = Color(0xFFD1C7C1);
-  static const destructive    = Color(0xFFE06C75); // Rojo suave — alertas, actividad
-  static const likedRed       = Color(0xFFE06C75); // Like rojo suave
-  static const border         = Color(0xFF3C2B23); // Bordes y divisores
+  static const background = Color(0xFF060B14); // Scaffold / fondo principal
+  static const foreground = Color(0xFFF8FAFC); // Texto principal
+  static const surface = Color(0xFF0A101D); // Sidebar / navbar
+  static const card = Color(0xFF0F172A); // Contenedores y tarjetas
+  static const cardRaised = Color(0xFF16213A); // Superficies elevadas / hover
+  static const primary = Color(0xFF3B82F6); // Azul — botones, chips activos
+  static const primaryFg = Color(0xFFFFFFFF); // Texto sobre primary
+  static const secondary = Color(0xFF1E293B); // Secundario / bordes activos
+  static const secondaryFg = Color(0xFF94A3B8); // Texto sobre secondary
+  static const muted = Color(0xFF1B2740); // Superficies sutiles
+  static const mutedFg = Color(0xFF94A3B8); // Texto secundario / subtítulos
+  static const disabled = Color(0xFF64748B); // Texto/íconos deshabilitados
+  static const accent = Color(0xFF312E81); // Acento terciario (violeta)
+  static const accentFg = Color(0xFFC7D2FE);
+  static const destructive = Color(
+    0xFFF87171,
+  ); // Rojo suave — alertas, actividad
+  static const likedRed = Color(0xFFF87171); // Like rojo suave
+  static const border = Color(0x2638BDF8); // rgba(56,189,248,0.15)
 
   // ── Acentos de marca (para badges, gradientes, chips) ──
-  static const gold           = Color(0xFFD9A441); // Dorado suave (badges, gradientes)
-  static const goldSoft       = Color(0xFFF0D9A8);
-  static const cream          = Color(0xFFF6EFDE);
-  static const amber          = Color(0xFFD9A441);
-  static const wine           = Color(0xFF8E3B47);
-  static const olive          = Color(0xFF7A7A3E);
+  static const accentCyan = Color(0xFF00F0FF); // Neón cyan
+  static const accentOrange = Color(0xFFFF5E00); // CTA naranja
+  static const gold = Color(0xFF8B5CF6); // Violeta (antes dorado)
+  static const goldSoft = Color(0xFFC4B5FD);
+  static const cream = Color(0xFFF8FAFC);
+  static const amber = Color(0xFFFF5E00);
+  static const wine = Color(0xFF7C3AED);
+  static const olive = Color(0xFF22D3EE);
 
   // ── Consola CRT (estado vacío) ──
-  static const consoleBg      = Color(0xFF12100C);
-  static const consoleGreen   = Color(0xFF7EF29A);
-  static const consoleFrame   = Color(0xFF59371F);
+  static const consoleBg = Color(0xFF05070D);
+  static const consoleGreen = Color(0xFF00F0FF);
+  static const consoleFrame = Color(0xFF1E3A5F);
 
   // Fill con alpha (píldoras, chips, badges)
-  static const white08        = Color(0x14FFFFFF);
-  static const white15        = Color(0x26FFFFFF);
-  static const black14        = Color(0x24000000);
-  static const gold20         = Color(0x33D9A441);
-  static const gold25         = Color(0x40D9A441);
-  static const gold35         = Color(0x59D9A441);
-  static const gold40         = Color(0x66D9A441);
-  static const gold50         = Color(0x80D9A441);
+  static const white08 = Color(0x14FFFFFF);
+  static const white15 = Color(0x26FFFFFF);
+  static const black14 = Color(0x24000000);
+  static const gold20 = Color(0x338B5CF6);
+  static const gold25 = Color(0x408B5CF6);
+  static const gold35 = Color(0x598B5CF6);
+  static const gold40 = Color(0x668B5CF6);
+  static const gold50 = Color(0x808B5CF6);
 
   // ── Gradientes predefinidos ──
-  static LinearGradient btnGradient() => LinearGradient(
-        colors: [Color(0xFFD47A4A), Color(0xFFC66E41)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+  static LinearGradient btnGradient() => const LinearGradient(
+    colors: [Color(0xFF00F0FF), Color(0xFF3B82F6), Color(0xFF8B5CF6)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Gradiente reducido (cyan → azul) para piezas pequeñas.
+  static LinearGradient cyanGradient() => const LinearGradient(
+    colors: [Color(0xFF00F0FF), Color(0xFF3B82F6)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Glow suave de neón para botones y elementos activos.
+  static List<BoxShadow> cyanGlow({double alpha = 0.35}) => [
+    BoxShadow(
+      color: accentCyan.withValues(alpha: alpha),
+      blurRadius: 16,
+      offset: const Offset(0, 0),
+    ),
+  ];
+
+  /// Glow naranja para los CTA de alto impacto.
+  static List<BoxShadow> orangeGlow({double alpha = 0.4}) => [
+    BoxShadow(
+      color: accentOrange.withValues(alpha: alpha),
+      blurRadius: 12,
+      offset: const Offset(0, 0),
+    ),
+  ];
 
   // Gradiente para cards trending
-  static LinearGradient trendingCardGradient() => LinearGradient(
-        colors: [Color(0xFF2E221B), Color(0xFF2A1F1A)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+  static LinearGradient trendingCardGradient() => const LinearGradient(
+    colors: [Color(0xFF111C33), Color(0xFF0F172A)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }
 
 /// Helpers de estilo compartidos por todos los widgets.
@@ -74,8 +109,12 @@ abstract final class DevTheme {
     double size = 20,
     FontWeight w = FontWeight.w700,
     Color color = DevColors.foreground,
-  }) =>
-      TextStyle(fontSize: size, fontWeight: w, color: color, fontFamily: 'Georgia');
+  }) => TextStyle(
+    fontSize: size,
+    fontWeight: w,
+    color: color,
+    fontFamily: 'Georgia',
+  );
 
   static TextStyle body({
     double size = 14,
@@ -83,34 +122,48 @@ abstract final class DevTheme {
     Color color = DevColors.foreground,
     double? height,
     FontStyle? fontStyle,
-  }) =>
-      TextStyle(fontSize: size, fontWeight: w, color: color, height: height, fontStyle: fontStyle, fontFamily: 'Segoe UI');
+  }) => TextStyle(
+    fontSize: size,
+    fontWeight: w,
+    color: color,
+    height: height,
+    fontStyle: fontStyle,
+    fontFamily: 'Segoe UI',
+  );
 
   static TextStyle bodySecondary({
     double size = 13,
     FontWeight w = FontWeight.w400,
     Color color = DevColors.mutedFg,
-  }) =>
-      TextStyle(fontSize: size, fontWeight: w, color: color, fontFamily: 'Segoe UI');
+  }) => TextStyle(
+    fontSize: size,
+    fontWeight: w,
+    color: color,
+    fontFamily: 'Segoe UI',
+  );
 
   static TextStyle mono({
     double size = 11,
     FontWeight w = FontWeight.w400,
     Color color = DevColors.consoleGreen,
-  }) =>
-      TextStyle(fontSize: size, fontWeight: w, color: color, fontFamily: 'Consolas');
+  }) => TextStyle(
+    fontSize: size,
+    fontWeight: w,
+    color: color,
+    fontFamily: 'Consolas',
+  );
 
   static TextStyle labelCaps({
     double size = 10,
     FontWeight w = FontWeight.w700,
     Color color = DevColors.mutedFg,
-  }) =>
-      TextStyle(
-          fontSize: size,
-          fontWeight: w,
-          color: color,
-          letterSpacing: 1.2,
-          fontFamily: 'Segoe UI');
+  }) => TextStyle(
+    fontSize: size,
+    fontWeight: w,
+    color: color,
+    letterSpacing: 1.2,
+    fontFamily: 'Segoe UI',
+  );
 
   // ── Superficies (glass-card / glass-strong de la web) ─────
   // Radio 16 por defecto: cards más suaves y modernas.
@@ -126,48 +179,41 @@ abstract final class DevTheme {
             offset: const Offset(0, 6),
           ),
           BoxShadow(
-            color: DevColors.gold.withValues(alpha: 0.06),
-            blurRadius: 1,
-            offset: const Offset(0, 1),
+            color: DevColors.accentCyan.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 0),
           ),
         ],
       );
 
   static BoxDecoration glassStrong({double radius = 16}) => BoxDecoration(
-        color: DevColors.card,
-        border: Border.all(color: DevColors.border),
-        borderRadius: BorderRadius.circular(radius),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 18,
-            offset: Offset(0, 4),
-          ),
-        ],
-      );
+    color: DevColors.card,
+    border: Border.all(color: DevColors.border),
+    borderRadius: BorderRadius.circular(radius),
+    boxShadow: const [
+      BoxShadow(color: Color(0x66000000), blurRadius: 18, offset: Offset(0, 4)),
+    ],
+  );
 
   // Card específica para trending games
   static BoxDecoration trendingCard({double radius = 16}) => BoxDecoration(
-        color: DevColors.card,
-        border: Border.all(color: DevColors.border),
-        borderRadius: BorderRadius.circular(radius),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x44000000),
-            blurRadius: 12,
-            offset: Offset(0, 3),
-          ),
-        ],
-      );
+    color: DevColors.card,
+    border: Border.all(color: DevColors.border),
+    borderRadius: BorderRadius.circular(radius),
+    boxShadow: const [
+      BoxShadow(color: Color(0x44000000), blurRadius: 12, offset: Offset(0, 3)),
+    ],
+  );
 
   /// Botón "degradado" primario → acento terracota.
   static LinearGradient btnGradient() => DevColors.btnGradient();
 }
 
-/// ThemeData de DevPlay — Paleta PRD "Descubrir".
+/// ThemeData de DevPlay — Paleta "Degradado Sci-Fi".
 ///
-/// Background #1C1411, Card #2A1F1A, Primary #C66E41,
-/// Text Primary #FBF3E4, Text Secondary #B6A69B, Border #3C2B23.
+/// Background #060B14, Surface #0A101D, Card #0F172A,
+/// Primary #3B82F6, Cyan #00F0FF, Violeta #8B5CF6,
+/// Text Primary #F8FAFC, Text Secondary #94A3B8.
 ThemeData buildDevPlayTheme() {
   final scheme = ColorScheme.dark(
     primary: DevColors.primary,
@@ -265,12 +311,12 @@ ThemeData buildDevPlayTheme() {
         elevation: 2,
         shadowColor: DevColors.primary.withValues(alpha: 0.4),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         textStyle: DevTheme.body(size: 16, w: FontWeight.w700),
       ),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: DevColors.muted,
+      backgroundColor: DevColors.cardRaised,
       labelStyle: DevTheme.body(size: 12),
       side: const BorderSide(color: DevColors.border),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -293,10 +339,12 @@ ThemeData buildDevPlayTheme() {
         borderSide: const BorderSide(color: DevColors.primary, width: 2),
       ),
       labelStyle: DevTheme.bodySecondary(),
-      hintStyle: DevTheme.bodySecondary(color: DevColors.mutedFg.withValues(alpha: 0.6)),
+      hintStyle: DevTheme.bodySecondary(
+        color: DevColors.mutedFg.withValues(alpha: 0.6),
+      ),
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor: DevColors.card,
+      backgroundColor: DevColors.surface,
       foregroundColor: DevColors.foreground,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
@@ -305,8 +353,8 @@ ThemeData buildDevPlayTheme() {
       iconTheme: const IconThemeData(color: DevColors.foreground),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: DevColors.card,
-      selectedItemColor: DevColors.gold,
+      backgroundColor: DevColors.surface,
+      selectedItemColor: DevColors.accentCyan,
       unselectedItemColor: DevColors.mutedFg,
       type: BottomNavigationBarType.fixed,
       elevation: 8,

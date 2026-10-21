@@ -413,7 +413,7 @@ class AboutScreen extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF3A2419), Color(0xFF2A1F1A), Color(0xFF1F1714)],
+          colors: [Color(0xFF0A101D), Color(0xFF0F172A), Color(0xFF0A101D)],
         ),
         border: Border.all(color: DevColors.border),
         boxShadow: [
@@ -452,7 +452,7 @@ class AboutScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         gradient: const LinearGradient(
-                          colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
+                          colors: [Color(0xFF00F0FF), Color(0xFF8B5CF6)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),

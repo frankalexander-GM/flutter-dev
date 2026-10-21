@@ -36,6 +36,6 @@ class TrendingGame {
         colors: g.map((c) => Color(int.parse(c.toString().replaceAll('#', '0xFF')))).toList(),
       );
     }
-    return const LinearGradient(colors: [Color(0xFFC66E41), Color(0xFFB05A35)]);
+    return const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6)]);
   }
 }

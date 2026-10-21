@@ -8,11 +8,7 @@ class TrendingGamesScreen extends StatelessWidget {
   final List<TrendingGame> games;
   final void Function(String)? onGameTap;
 
-  const TrendingGamesScreen({
-    super.key,
-    required this.games,
-    this.onGameTap,
-  });
+  const TrendingGamesScreen({super.key, required this.games, this.onGameTap});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +19,10 @@ class TrendingGamesScreen extends StatelessWidget {
         elevation: 0,
         title: Text('Juegos en tendencia', style: DevTheme.display(size: 20)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: DevColors.foreground),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: DevColors.foreground,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -43,12 +42,13 @@ class TrendingGamesScreen extends StatelessWidget {
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.78,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.78,
+                        ),
                     delegate: SliverChildBuilderDelegate(
                       (_, i) => _TrendingGameGridCard(
                         game: games[i],
@@ -78,7 +78,11 @@ class TrendingGamesScreen extends StatelessWidget {
                 color: DevColors.muted,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.videogame_asset_rounded, size: 36, color: DevColors.mutedFg),
+              child: Icon(
+                Icons.videogame_asset_rounded,
+                size: 36,
+                color: DevColors.mutedFg,
+              ),
             ),
             const SizedBox(height: 20),
             Text('Sin juegos en tendencia', style: DevTheme.display(size: 18)),
@@ -115,7 +119,9 @@ class _TrendingGameGridCard extends StatelessWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
                     child: Image.network(
@@ -124,7 +130,11 @@ class _TrendingGameGridCard extends StatelessWidget {
                       width: double.infinity,
                       errorBuilder: (_, __, ___) => Container(
                         color: DevColors.muted,
-                        child: Icon(Icons.videogame_asset_rounded, size: 32, color: DevColors.mutedFg),
+                        child: Icon(
+                          Icons.videogame_asset_rounded,
+                          size: 32,
+                          color: DevColors.mutedFg,
+                        ),
                       ),
                     ),
                   ),
@@ -135,7 +145,10 @@ class _TrendingGameGridCard extends StatelessWidget {
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: DevColors.destructive,
                         borderRadius: BorderRadius.circular(4),
@@ -143,11 +156,19 @@ class _TrendingGameGridCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.trending_up_rounded, size: 9, color: Colors.white),
+                          const Icon(
+                            Icons.trending_up_rounded,
+                            size: 9,
+                            color: Colors.white,
+                          ),
                           const SizedBox(width: 3),
                           Text(
                             'TENDENCIA',
-                            style: DevTheme.body(size: 9, w: FontWeight.w700, color: Colors.white),
+                            style: DevTheme.body(
+                              size: 9,
+                              w: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
                         ],
                       ),
@@ -175,12 +196,13 @@ class _TrendingGameGridCard extends StatelessWidget {
                         style: DevTheme.bodySecondary(size: 11),
                       ),
                       const Spacer(),
-                      Icon(Icons.visibility_rounded, size: 12, color: DevColors.mutedFg),
-                      const SizedBox(width: 3),
-                      Text(
-                        game.views,
-                        style: DevTheme.bodySecondary(size: 11),
+                      Icon(
+                        Icons.visibility_rounded,
+                        size: 12,
+                        color: DevColors.mutedFg,
                       ),
+                      const SizedBox(width: 3),
+                      Text(game.views, style: DevTheme.bodySecondary(size: 11)),
                     ],
                   ),
                 ],
