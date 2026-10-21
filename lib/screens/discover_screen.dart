@@ -8,9 +8,12 @@ import '../../models/trending_game.dart';
 import '../../services/beta_service.dart';
 import '../../services/post_service.dart';
 import '../../theme.dart';
+import 'profile_screen.dart';
 import '../../utils/format.dart';
 import 'trending_games_screen.dart';
 import '../../widgets/animations.dart';
+import '../../widgets/hero_3d_shapes.dart';
+import '../../widgets/hero_video.dart';
 import '../../widgets/post_card.dart';
 
 /// Pantalla **Descubrir** — Rediseño completo PRD con **scroll único**.
@@ -25,11 +28,7 @@ class DiscoverScreen extends StatefulWidget {
   final VoidCallback? onCreateTap;
   final void Function(String)? onGameTap;
 
-  const DiscoverScreen({
-    super.key,
-    this.onCreateTap,
-    this.onGameTap,
-  });
+  const DiscoverScreen({super.key, this.onCreateTap, this.onGameTap});
 
   @override
   State<DiscoverScreen> createState() => _DiscoverScreenState();
@@ -111,21 +110,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       // Usamos el servicio de posts con sort=trending.
       // El endpoint dedicado /discover/trending aún no existe en backend,
       // así que traemos los posts más populares y los mostramos como "trending".
-      final posts = await PostService.getPosts(
-        sort: 'trending',
-        limit: 8,
-      );
+      final posts = await PostService.getPosts(sort: 'trending', limit: 8);
       // Ordenar por likes (más populares primero) y mapear a TrendingGame.
-      final sorted = [...posts]..sort((a, b) => b.likesCount.compareTo(a.likesCount));
+      final sorted = [...posts]
+        ..sort((a, b) => b.likesCount.compareTo(a.likesCount));
       setState(() {
         _trendingGames = sorted.map((p) {
-          final cover = p.game?.coverUrl ??
+          final cover =
+              p.game?.coverUrl ??
               (p.media.isNotEmpty ? p.media.first.url : null);
-          final label = p.game?.title ??
+          final label =
+              p.game?.title ??
               (p.content.isNotEmpty
                   ? (p.content.length > 30
-                      ? '${p.content.substring(0, 30)}...'
-                      : p.content)
+                        ? '${p.content.substring(0, 30)}...'
+                        : p.content)
                   : 'Publicación');
           return TrendingGame(
             id: p.id,
@@ -134,7 +133,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             views: compactNumber(p.likesCount),
             isTrending: true,
             imageUrl: cover ?? '',
-            gradient: const LinearGradient(colors: [Color(0xFFC66E41), Color(0xFFB05A35)]),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFC66E41), Color(0xFFB05A35)],
+            ),
           );
         }).toList();
         _trendingLoading = false;
@@ -150,7 +151,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Future<void> _loadDevGames() async {
     setState(() => _devLoading = true);
     try {
-      final posts = await PostService.getPosts(type: 'DEV_LOG', sort: 'latest', limit: 6);
+      final posts = await PostService.getPosts(
+        type: 'DEV_LOG',
+        sort: 'latest',
+        limit: 6,
+      );
       setState(() {
         _devGames = posts;
         _devLoading = false;
@@ -166,7 +171,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Future<void> _loadBetaGames() async {
     setState(() => _betaLoading = true);
     try {
-      final posts = await PostService.getPosts(type: 'BETA', sort: 'latest', limit: 6);
+      final posts = await PostService.getPosts(
+        type: 'BETA',
+        sort: 'latest',
+        limit: 6,
+      );
       setState(() {
         _betaGames = posts;
         _betaLoading = false;
@@ -195,13 +204,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           type = 'BETA';
           sort = 'latest';
           break;
+        case DiscoverFilter.devLogs:
+          type = 'DEV_LOG';
+          sort = 'latest';
+          break;
         case DiscoverFilter.posts:
           type = 'POST';
           sort = 'latest';
           break;
       }
 
-      final posts = await PostService.getPosts(type: type, sort: sort, limit: 50);
+      final posts = await PostService.getPosts(
+        type: type,
+        sort: sort,
+        limit: 50,
+      );
       setState(() {
         _posts = posts;
         _isLoading = false;
@@ -229,16 +246,25 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         child: CustomScrollView(
           slivers: [
             // 1. JUEGO DESTACADO (Hero)
-            if (_featuredGame != null)
-              SliverToBoxAdapter(child: _FeaturedGameHero(
-                game: _featuredGame!,
-                onDetailTap: widget.onGameTap,
-                onPlayTap: () => _openGame(_featuredGame!),
-                onBetaTap: () => _openBeta(_featuredGame!),
-              )),
+            // Si la API no tiene showcases publicados, se muestra el hero con
+            // video y un estado honesto en vez de dejar un hueco vacío.
+            SliverToBoxAdapter(
+              child: _featuredGame != null
+                  ? _FeaturedGameHero(
+                      game: _featuredGame!,
+                      onDetailTap: widget.onGameTap,
+                      onPlayTap: () => _openGame(_featuredGame!),
+                      onBetaTap: () => _openBeta(_featuredGame!),
+                    )
+                  : _DiscoverHeroFallback(onCreateTap: widget.onCreateTap),
+            ),
 
             // 2. FEED DE PUBLICACIONES (integrado en el scroll principal)
-            SliverToBoxAdapter(child: _buildFeedSection()),
+            // El header va en su propio SliverToBoxAdapter y la lista se
+            // agrega como sliver real: un SliverList nunca puede vivir
+            // dentro de un Column (RenderFlex).
+            SliverToBoxAdapter(child: _buildFeedHeader()),
+            ..._buildFeedSlivers(),
 
             // 3. JUEGOS EN TENDENCIA
             if (_trendingGames.isNotEmpty)
@@ -261,66 +287,80 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   // ===== SECCIÓN: FEED DE PUBLICACIONES (SLIVER LIST INTEGRADO) =====
-  Widget _buildFeedSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header con filtros
-        Container(
-          color: DevColors.card,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text('Feed', style: DevTheme.display(size: 22)),
-                  const SizedBox(width: 12),
-                  _buildFilterPills(),
-                ],
-              ),
-            ],
+  /// Header del feed con el título y los filtros activos.
+  Widget _buildFeedHeader() {
+    return Container(
+      color: DevColors.card,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      child: Row(
+        children: [
+          Text('Feed', style: DevTheme.display(size: 22)),
+          const SizedBox(width: 12),
+          Expanded(child: _buildFilterPills()),
+        ],
+      ),
+    );
+  }
+
+  /// Slivers del feed. Se devuelven como lista para poder insertarlos
+  /// directamente en el `CustomScrollView` (un sliver no puede ser hijo
+  /// de un `Column`).
+  List<Widget> _buildFeedSlivers() {
+    if (_isLoading) {
+      return [
+        const SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: CircularProgressIndicator(color: DevColors.primary),
           ),
         ),
-
-        // Feed integrado en el scroll principal usando SliverList
-        _isLoading
-            ? const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator(color: DevColors.primary)),
-              )
-            : _error != null
-                ? SliverFillRemaining(
-                    child: _ErrorView(message: _error!, onRetry: _loadPosts),
-                  )
-                : _posts.isEmpty
-                    ? SliverFillRemaining(
-                        child: _EmptyState(
-                          icon: Icons.article_outlined,
-                          title: 'Sin publicaciones',
-                          description: 'Sé el primero en compartir algo.',
-                          actionLabel: 'Crear publicación',
-                          onAction: widget.onCreateTap,
-                        ),
-                      )
-                    : SliverList.separated(
-                        key: _feedKey,
-                        itemCount: _posts.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                          child: i == 0
-                              ? Sheen(child: PostCard(
-                                  post: _posts[i],
-                                  onGameTap: widget.onGameTap,
-                                ))
-                              : PostCard(
-                                  post: _posts[i],
-                                  onGameTap: widget.onGameTap,
-                                ),
-                        ),
-                      ),
-      ],
-    );
+      ];
+    }
+    if (_error != null) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _ErrorView(message: _error!, onRetry: _loadPosts),
+        ),
+      ];
+    }
+    if (_posts.isEmpty) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _EmptyState(
+            icon: Icons.article_outlined,
+            title: 'Sin publicaciones',
+            description: 'Sé el primero en compartir algo.',
+            actionLabel: 'Crear publicación',
+            onAction: widget.onCreateTap,
+          ),
+        ),
+      ];
+    }
+    return [
+      SliverList.separated(
+        key: _feedKey,
+        itemCount: _posts.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (_, i) => Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+          child: i == 0
+              ? Sheen(
+                  child: PostCard(
+                    post: _posts[i],
+                    onGameTap: widget.onGameTap,
+                    onProfileTap: () => _openAuthor(_posts[i]),
+                  ),
+                )
+              : PostCard(
+                  post: _posts[i],
+                  onGameTap: widget.onGameTap,
+                  onProfileTap: () => _openAuthor(_posts[i]),
+                ),
+        ),
+      ),
+    ];
   }
 
   Widget _buildFilterPills() {
@@ -361,7 +401,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 color: isActive ? DevColors.primary : DevColors.border,
                 width: isActive ? 1.5 : 1,
               ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               showCheckmark: false,
@@ -392,9 +434,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.trending_up_rounded, size: 10, color: DevColors.destructive),
+                    const Icon(
+                      Icons.trending_up_rounded,
+                      size: 10,
+                      color: DevColors.destructive,
+                    ),
                     const SizedBox(width: 3),
-                    Text('HOT', style: DevTheme.body(size: 9, w: FontWeight.w700, color: DevColors.destructive)),
+                    Text(
+                      'HOT',
+                      style: DevTheme.body(
+                        size: 9,
+                        w: FontWeight.w700,
+                        color: DevColors.destructive,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -409,7 +462,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ),
                 ),
                 icon: const Icon(Icons.chevron_right_rounded, size: 16),
-                label: Text('Ver todo', style: DevTheme.body(size: 12, w: FontWeight.w600, color: DevColors.primary)),
+                label: Text(
+                  'Ver todo',
+                  style: DevTheme.body(
+                    size: 12,
+                    w: FontWeight.w600,
+                    color: DevColors.primary,
+                  ),
+                ),
                 style: TextButton.styleFrom(foregroundColor: DevColors.primary),
               ),
             ],
@@ -440,7 +500,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   // ===== SECCIÓN: EN DESARROLLO =====
   Widget _buildDevSection() {
-    final devPosts = _devGames.where((p) => p.type == PostType.dev_log || p.type == PostType.update).toList();
+    final devPosts = _devGames
+        .where((p) => p.type == PostType.dev_log || p.type == PostType.update)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,7 +519,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       color: DevColors.gold.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.code_rounded, size: 18, color: DevColors.gold),
+                    child: Icon(
+                      Icons.code_rounded,
+                      size: 18,
+                      color: DevColors.gold,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text('En desarrollo', style: DevTheme.display(size: 20)),
@@ -465,8 +531,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ),
               const Spacer(),
               TextButton(
-                onPressed: () => _onFilterChanged(DiscoverFilter.posts),
-                child: Text('Ver todo', style: DevTheme.body(size: 12, w: FontWeight.w600, color: DevColors.primary)),
+                onPressed: () => _onFilterChanged(DiscoverFilter.devLogs),
+                child: Text(
+                  'Ver todo',
+                  style: DevTheme.body(
+                    size: 12,
+                    w: FontWeight.w600,
+                    color: DevColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
@@ -482,25 +555,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
               )
             : devPosts.isEmpty
-                ? _EmptyState(
-                    icon: Icons.code_rounded,
-                    title: 'Sin dev logs por ahora',
-                    description: 'Los diarios de desarrollo aparecerán aquí.',
-                    actionLabel: 'Ver feed',
-                    onAction: () => _onFilterChanged(DiscoverFilter.todo),
-                  )
-                : SizedBox(
-                    height: 280,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: devPosts.length,
-                      itemBuilder: (_, i) => _DevGameCard(
-                        post: devPosts[i],
-                        onTap: () => widget.onGameTap?.call(devPosts[i].game?.title ?? ''),
-                      ),
-                    ),
+            ? _EmptyState(
+                icon: Icons.code_rounded,
+                title: 'Sin dev logs por ahora',
+                description: 'Los diarios de desarrollo aparecerán aquí.',
+                actionLabel: 'Ver feed',
+                onAction: () => _onFilterChanged(DiscoverFilter.todo),
+              )
+            : SizedBox(
+                height: 280,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: devPosts.length,
+                  itemBuilder: (_, i) => _DevGameCard(
+                    post: devPosts[i],
+                    onTap: () =>
+                        widget.onGameTap?.call(devPosts[i].game?.title ?? ''),
                   ),
+                ),
+              ),
       ],
     );
   }
@@ -524,16 +598,30 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       color: DevColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.science_rounded, size: 18, color: DevColors.primary),
+                    child: Icon(
+                      Icons.science_rounded,
+                      size: 18,
+                      color: DevColors.primary,
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  Text('Laboratorio de betas', style: DevTheme.display(size: 20)),
+                  Text(
+                    'Laboratorio de betas',
+                    style: DevTheme.display(size: 20),
+                  ),
                 ],
               ),
               const Spacer(),
               TextButton(
                 onPressed: () => _onFilterChanged(DiscoverFilter.betas),
-                child: Text('Ver todas', style: DevTheme.body(size: 12, w: FontWeight.w600, color: DevColors.primary)),
+                child: Text(
+                  'Ver todas',
+                  style: DevTheme.body(
+                    size: 12,
+                    w: FontWeight.w600,
+                    color: DevColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
@@ -549,38 +637,53 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
               )
             : betaPosts.isEmpty
-                ? _EmptyState(
-                    icon: Icons.science_rounded,
-                    title: 'Sin betas abiertas',
-                    description: 'Cuando haya betas buscando testers aparecerán aquí.',
-                    actionLabel: 'Ver feed',
-                    onAction: () => _onFilterChanged(DiscoverFilter.todo),
-                  )
-                : SizedBox(
-                    height: 240,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: betaPosts.length,
-                      itemBuilder: (_, i) => _BetaLabCard(
-                        post: betaPosts[i],
-                        onTap: () => widget.onGameTap?.call(betaPosts[i].game?.title ?? ''),
-                        onJoinTap: () => _joinBeta(betaPosts[i]),
-                      ),
-                    ),
+            ? _EmptyState(
+                icon: Icons.science_rounded,
+                title: 'Sin betas abiertas',
+                description:
+                    'Cuando haya betas buscando testers aparecerán aquí.',
+                actionLabel: 'Ver feed',
+                onAction: () => _onFilterChanged(DiscoverFilter.todo),
+              )
+            : SizedBox(
+                height: 240,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: betaPosts.length,
+                  itemBuilder: (_, i) => _BetaLabCard(
+                    post: betaPosts[i],
+                    onTap: () =>
+                        widget.onGameTap?.call(betaPosts[i].game?.title ?? ''),
+                    onJoinTap: () => _joinBeta(betaPosts[i]),
                   ),
+                ),
+              ),
       ],
     );
   }
 
   // ===== UTILIDADES =====
+  /// Abre el perfil público del autor de una publicación.
+  void _openAuthor(Post post) {
+    final authorId = post.author?.id;
+    if (authorId == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(userId: authorId),
+      ),
+    );
+  }
+
   void _openGame(Post post) {
     final game = post.game;
     final url = game?.playUrl;
     if (url == null || url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${game?.title ?? post.title} todavía no tiene enlace jugable'),
+          content: Text(
+            '${game?.title ?? post.title} todavía no tiene enlace jugable',
+          ),
         ),
       );
       return;
@@ -626,7 +729,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       if (url.isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('La beta todavía no tiene enlace de descarga')),
+          const SnackBar(
+            content: Text('La beta todavía no tiene enlace de descarga'),
+          ),
         );
         return;
       }
@@ -646,16 +751,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(opened
-              ? 'Abriendo la beta de ${beta.title}…'
-              : 'Enlace de la beta copiado'),
+          content: Text(
+            opened
+                ? 'Abriendo la beta de ${beta.title}…'
+                : 'Enlace de la beta copiado',
+          ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo abrir la beta: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No se pudo abrir la beta: $e')));
     } finally {
       if (mounted) setState(() => _joiningBeta = false);
     }
@@ -751,12 +858,17 @@ class _TrendingGameCard extends StatelessWidget {
             AspectRatio(
               aspectRatio: 16 / 9,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
                 child: game.imageUrl.isEmpty
                     ? Container(
                         color: DevColors.muted,
-                        child: Icon(Icons.image,
-                            color: DevColors.mutedFg, size: 32),
+                        child: Icon(
+                          Icons.image,
+                          color: DevColors.mutedFg,
+                          size: 32,
+                        ),
                       )
                     : Image.network(
                         game.imageUrl,
@@ -764,8 +876,11 @@ class _TrendingGameCard extends StatelessWidget {
                         width: double.infinity,
                         errorBuilder: (_, __, ___) => Container(
                           color: DevColors.muted,
-                          child: Icon(Icons.image,
-                              color: DevColors.mutedFg, size: 32),
+                          child: Icon(
+                            Icons.image,
+                            color: DevColors.mutedFg,
+                            size: 32,
+                          ),
                         ),
                       ),
               ),
@@ -817,6 +932,7 @@ class _FeaturedGameHero extends StatelessWidget {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
@@ -825,11 +941,30 @@ class _FeaturedGameHero extends StatelessWidget {
           colors: [const Color(0xFF2A1F1A), const Color(0xFF1C1411)],
         ),
         border: Border.all(color: DevColors.border),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Stack(
         children: [
-          // Fondo con imagen
+          // Video 3D en loop como base del hero (mismo asset que Inicio).
+          Positioned.fill(
+            child: HeroVideo(
+              videoAsset: 'assets/videos/hero_loop_crystal_loop',
+              posterAsset: 'assets/videos/hero_loop_crystal_loop_poster',
+              autoPlay: true,
+              mute: true,
+              shapeOpacity: 0.35,
+              shapeStyle: Hero3DStyle.home,
+              enablePointerInterceptor: false,
+              scrimOpacity: 0.20,
+            ),
+          ),
+          // Fondo con imagen del juego (real, de la API) sobre el video.
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: AspectRatio(
@@ -838,7 +973,13 @@ class _FeaturedGameHero extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   game.media.isNotEmpty && game.media.first.url.isNotEmpty
-                      ? Image.network(game.media.first.url, fit: BoxFit.cover)
+                      ? Opacity(
+                          opacity: 0.72,
+                          child: Image.network(
+                            game.media.first.url,
+                            fit: BoxFit.cover,
+                          ),
+                        )
                       : Container(color: DevColors.card),
                   // Gradiente overlay
                   Container(
@@ -868,15 +1009,24 @@ class _FeaturedGameHero extends StatelessWidget {
                 // Badge estado
                 if (game.game?.status != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: _statusColor(game.game!.status!).withValues(alpha: 0.2),
+                      color: _statusColor(game.game!.status!)
+                          .withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _statusColor(game.game!.status!)),
+                      border: Border.all(
+                        color: _statusColor(game.game!.status!),
+                      ),
                     ),
                     child: Text(
                       game.game!.status!.toUpperCase(),
-                      style: DevTheme.labelCaps(size: 10, color: _statusColor(game.game!.status!)),
+                      style: DevTheme.labelCaps(
+                        size: 10,
+                        color: _statusColor(game.game!.status!),
+                      ),
                     ),
                   ),
                 const SizedBox(height: 12),
@@ -892,14 +1042,28 @@ class _FeaturedGameHero extends StatelessWidget {
                 if (game.game != null) ...[
                   Row(
                     children: [
-                      Icon(Icons.person_rounded, size: 14, color: DevColors.mutedFg),
+                      Icon(
+                        Icons.person_rounded,
+                        size: 14,
+                        color: DevColors.mutedFg,
+                      ),
                       const SizedBox(width: 4),
-                      Text(game.game!.developer ?? '', style: DevTheme.bodySecondary(size: 13)),
+                      Text(
+                        game.game!.developer ?? '',
+                        style: DevTheme.bodySecondary(size: 13),
+                      ),
                       if (game.game!.genre != null) ...[
                         const SizedBox(width: 12),
-                        Icon(Icons.category_rounded, size: 14, color: DevColors.mutedFg),
+                        Icon(
+                          Icons.category_rounded,
+                          size: 14,
+                          color: DevColors.mutedFg,
+                        ),
                         const SizedBox(width: 4),
-                        Text(game.game!.genre!, style: DevTheme.bodySecondary(size: 13)),
+                        Text(
+                          game.game!.genre!,
+                          style: DevTheme.bodySecondary(size: 13),
+                        ),
                       ],
                     ],
                   ),
@@ -915,7 +1079,9 @@ class _FeaturedGameHero extends StatelessWidget {
                         label: const Text('Jugar ahora'),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
@@ -927,9 +1093,14 @@ class _FeaturedGameHero extends StatelessWidget {
                         label: const Text('Unirse a beta'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: DevColors.primary,
-                          side: const BorderSide(color: DevColors.primary, width: 1.5),
+                          side: const BorderSide(
+                            color: DevColors.primary,
+                            width: 1.5,
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
@@ -943,10 +1114,19 @@ class _FeaturedGameHero extends StatelessWidget {
                     runSpacing: 8,
                     children: [
                       if (game.game!.version != null)
-                        _DetailChip(icon: Icons.tag_rounded, label: game.game!.version!),
+                        _DetailChip(
+                          icon: Icons.tag_rounded,
+                          label: game.game!.version!,
+                        ),
                       if (game.game!.platform != null)
-                        _DetailChip(icon: Icons.computer_rounded, label: game.game!.platform!),
-                      _DetailChip(icon: Icons.visibility_rounded, label: '${compactNumber(game.viewsCount)} vistas'),
+                        _DetailChip(
+                          icon: Icons.computer_rounded,
+                          label: game.game!.platform!,
+                        ),
+                      _DetailChip(
+                        icon: Icons.visibility_rounded,
+                        label: '${compactNumber(game.viewsCount)} vistas',
+                      ),
                     ],
                   ),
                 ],
@@ -960,12 +1140,118 @@ class _FeaturedGameHero extends StatelessWidget {
 
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'released': return DevColors.olive;
-      case 'beta': return DevColors.primary;
-      case 'alpha': return DevColors.amber;
-      case 'prototype': return DevColors.gold;
-      default: return DevColors.mutedFg;
+      case 'released':
+        return DevColors.olive;
+      case 'beta':
+        return DevColors.primary;
+      case 'alpha':
+        return DevColors.amber;
+      case 'prototype':
+        return DevColors.gold;
+      default:
+        return DevColors.mutedFg;
     }
+  }
+}
+
+/// Hero de respaldo de Descubrir.
+///
+/// Cuando la API todavía no tiene publicaciones de tipo `GAME_SHOWCASE`, el
+/// hero de juego destacado no puede mostrarse. En vez de dejar un hueco en la
+/// parte superior de la vista, se muestra el mismo fondo de video con un
+/// mensaje honesto y una acción útil.
+class _DiscoverHeroFallback extends StatelessWidget {
+  final VoidCallback? onCreateTap;
+
+  const _DiscoverHeroFallback({this.onCreateTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2A1F1A), Color(0xFF1C1411)],
+        ),
+        border: Border.all(color: DevColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Mismo video 3D en loop que el resto de heroes.
+          const Positioned.fill(
+            child: HeroVideo(
+              videoAsset: 'assets/videos/hero_loop_crystal_loop',
+              posterAsset: 'assets/videos/hero_loop_crystal_loop_poster',
+              autoPlay: true,
+              mute: true,
+              shapeOpacity: 0.35,
+              shapeStyle: Hero3DStyle.home,
+              enablePointerInterceptor: false,
+              scrimOpacity: 0.20,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: DevColors.primary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: DevColors.primary),
+                  ),
+                  child: Text(
+                    'DESCUBRIR',
+                    style: DevTheme.labelCaps(size: 10, color: DevColors.primary),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Aún no hay juegos destacados',
+                  style: DevTheme.display(size: 26, w: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Publica un showcase y aparecerá aquí como juego destacado.',
+                  style: DevTheme.bodySecondary(size: 13),
+                ),
+                const SizedBox(height: 16),
+                if (onCreateTap != null)
+                  ElevatedButton.icon(
+                    onPressed: onCreateTap,
+                    icon: const Icon(Icons.add_rounded, size: 20),
+                    label: const Text('Publicar un juego'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -974,7 +1260,6 @@ class _DetailChip extends StatelessWidget {
   final String label;
 
   const _DetailChip({required this.icon, required this.label});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1018,10 +1303,23 @@ class _DevGameCard extends StatelessWidget {
             AspectRatio(
               aspectRatio: 16 / 9,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
                 child: post.media.isNotEmpty && post.media.first.url.isNotEmpty
-                    ? Image.network(post.media.first.url, fit: BoxFit.cover, width: double.infinity)
-                    : Container(color: DevColors.muted, child: Icon(Icons.code_rounded, size: 32, color: DevColors.mutedFg)),
+                    ? Image.network(
+                        post.media.first.url,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      )
+                    : Container(
+                        color: DevColors.muted,
+                        child: Icon(
+                          Icons.code_rounded,
+                          size: 32,
+                          color: DevColors.mutedFg,
+                        ),
+                      ),
               ),
             ),
             // Info
@@ -1033,32 +1331,66 @@ class _DevGameCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: DevColors.gold.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text('DevLog', style: DevTheme.labelCaps(size: 9, color: DevColors.gold)),
+                        child: Text(
+                          'DevLog',
+                          style: DevTheme.labelCaps(
+                            size: 9,
+                            color: DevColors.gold,
+                          ),
+                        ),
                       ),
                       const Spacer(),
-                      Text(timeAgo(post.createdAt), style: DevTheme.bodySecondary(size: 10)),
+                      Text(
+                        timeAgo(post.createdAt),
+                        style: DevTheme.bodySecondary(size: 10),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(post.game?.title ?? _postLabel(post, max: 30), style: DevTheme.body(size: 15, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    post.game?.title ?? _postLabel(post, max: 30),
+                    style: DevTheme.body(size: 15, w: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 4),
                   if (post.game?.developer != null)
-                    Text('por ${post.game!.developer}', style: DevTheme.bodySecondary(size: 11)),
+                    Text(
+                      'por ${post.game!.developer}',
+                      style: DevTheme.bodySecondary(size: 11),
+                    ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.favorite_rounded, size: 13, color: DevColors.likedRed),
+                      Icon(
+                        Icons.favorite_rounded,
+                        size: 13,
+                        color: DevColors.likedRed,
+                      ),
                       const SizedBox(width: 3),
-                      Text('${post.likesCount}', style: DevTheme.bodySecondary(size: 11)),
+                      Text(
+                        '${post.likesCount}',
+                        style: DevTheme.bodySecondary(size: 11),
+                      ),
                       const SizedBox(width: 12),
-                      Icon(Icons.mode_comment_outlined, size: 13, color: DevColors.mutedFg),
+                      Icon(
+                        Icons.mode_comment_outlined,
+                        size: 13,
+                        color: DevColors.mutedFg,
+                      ),
                       const SizedBox(width: 3),
-                      Text('${post.commentsCount}', style: DevTheme.bodySecondary(size: 11)),
+                      Text(
+                        '${post.commentsCount}',
+                        style: DevTheme.bodySecondary(size: 11),
+                      ),
                     ],
                   ),
                 ],
@@ -1085,7 +1417,12 @@ class _DevGameShimmer extends StatelessWidget {
           AspectRatio(
             aspectRatio: 16 / 9,
             child: Container(
-              decoration: BoxDecoration(color: DevColors.muted, borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
+              decoration: BoxDecoration(
+                color: DevColors.muted,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+              ),
             ),
           ),
           Padding(
@@ -1093,11 +1430,32 @@ class _DevGameShimmer extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(width: 80, height: 14, decoration: BoxDecoration(color: DevColors.muted, borderRadius: BorderRadius.circular(4))),
+                Container(
+                  width: 80,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: DevColors.muted,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Container(width: 120, height: 16, decoration: BoxDecoration(color: DevColors.muted, borderRadius: BorderRadius.circular(4))),
+                Container(
+                  width: 120,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: DevColors.muted,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Container(width: 60, height: 12, decoration: BoxDecoration(color: DevColors.muted, borderRadius: BorderRadius.circular(4))),
+                Container(
+                  width: 60,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: DevColors.muted,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1113,7 +1471,11 @@ class _BetaLabCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onJoinTap;
 
-  const _BetaLabCard({required this.post, required this.onTap, required this.onJoinTap});
+  const _BetaLabCard({
+    required this.post,
+    required this.onTap,
+    required this.onJoinTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1131,10 +1493,23 @@ class _BetaLabCard extends StatelessWidget {
             AspectRatio(
               aspectRatio: 16 / 9,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
                 child: post.media.isNotEmpty && post.media.first.url.isNotEmpty
-                    ? Image.network(post.media.first.url, fit: BoxFit.cover, width: double.infinity)
-                    : Container(color: DevColors.muted, child: Icon(Icons.science_rounded, size: 32, color: DevColors.mutedFg)),
+                    ? Image.network(
+                        post.media.first.url,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      )
+                    : Container(
+                        color: DevColors.muted,
+                        child: Icon(
+                          Icons.science_rounded,
+                          size: 32,
+                          color: DevColors.mutedFg,
+                        ),
+                      ),
               ),
             ),
             // Info
@@ -1146,37 +1521,75 @@ class _BetaLabCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: beta?.isOpen == true ? DevColors.primary.withValues(alpha: 0.15) : DevColors.muted,
+                          color: beta?.isOpen == true
+                              ? DevColors.primary.withValues(alpha: 0.15)
+                              : DevColors.muted,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           beta?.isOpen == true ? 'ABIERTA' : 'CERRADA',
-                          style: DevTheme.labelCaps(size: 9, color: beta?.isOpen == true ? DevColors.primary : DevColors.mutedFg),
+                          style: DevTheme.labelCaps(
+                            size: 9,
+                            color: beta?.isOpen == true
+                                ? DevColors.primary
+                                : DevColors.mutedFg,
+                          ),
                         ),
                       ),
                       const Spacer(),
                       if (beta?.version != null)
-                        Text('v${beta!.version}', style: DevTheme.bodySecondary(size: 10, color: DevColors.gold)),
+                        Text(
+                          'v${beta!.version}',
+                          style: DevTheme.bodySecondary(
+                            size: 10,
+                            color: DevColors.gold,
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(post.game?.title ?? _postLabel(post, max: 30), style: DevTheme.body(size: 15, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    post.game?.title ?? _postLabel(post, max: 30),
+                    style: DevTheme.body(size: 15, w: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 4),
                   if (post.game?.developer != null)
-                    Text('por ${post.game!.developer}', style: DevTheme.bodySecondary(size: 11)),
+                    Text(
+                      'por ${post.game!.developer}',
+                      style: DevTheme.bodySecondary(size: 11),
+                    ),
                   const SizedBox(height: 10),
                   if (beta != null) ...[
                     Row(
                       children: [
-                        Icon(Icons.people_rounded, size: 13, color: DevColors.mutedFg),
+                        Icon(
+                          Icons.people_rounded,
+                          size: 13,
+                          color: DevColors.mutedFg,
+                        ),
                         const SizedBox(width: 3),
-                        Text('${beta.testersCount}/${beta.maxTesters} testers', style: DevTheme.bodySecondary(size: 11)),
+                        Text(
+                          '${beta.testersCount}/${beta.maxTesters} testers',
+                          style: DevTheme.bodySecondary(size: 11),
+                        ),
                         const SizedBox(width: 12),
-                        Icon(Icons.download_rounded, size: 13, color: DevColors.mutedFg),
+                        Icon(
+                          Icons.download_rounded,
+                          size: 13,
+                          color: DevColors.mutedFg,
+                        ),
                         const SizedBox(width: 3),
-                        Text('${beta.downloads} descargas', style: DevTheme.bodySecondary(size: 11)),
+                        Text(
+                          '${beta.downloads} descargas',
+                          style: DevTheme.bodySecondary(size: 11),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -1186,12 +1599,20 @@ class _BetaLabCard extends StatelessWidget {
                       child: ElevatedButton.icon(
                         onPressed: onJoinTap,
                         icon: const Icon(Icons.science_rounded, size: 18),
-                        label: Text(beta.isOpen ? 'Unirse a la beta' : 'Beta cerrada'),
+                        label: Text(
+                          beta.isOpen ? 'Unirse a la beta' : 'Beta cerrada',
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: beta.isOpen ? DevColors.primary : DevColors.muted,
-                          foregroundColor: beta.isOpen ? Colors.white : DevColors.mutedFg,
+                          backgroundColor: beta.isOpen
+                              ? DevColors.primary
+                              : DevColors.muted,
+                          foregroundColor: beta.isOpen
+                              ? Colors.white
+                              : DevColors.mutedFg,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),
@@ -1220,7 +1641,12 @@ class _BetaCardShimmer extends StatelessWidget {
           AspectRatio(
             aspectRatio: 16 / 9,
             child: Container(
-              decoration: BoxDecoration(color: DevColors.muted, borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
+              decoration: BoxDecoration(
+                color: DevColors.muted,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+              ),
             ),
           ),
           Padding(
@@ -1228,13 +1654,41 @@ class _BetaCardShimmer extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(width: 60, height: 18, decoration: BoxDecoration(color: DevColors.muted, borderRadius: BorderRadius.circular(4))),
+                Container(
+                  width: 60,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: DevColors.muted,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Container(width: 120, height: 16, decoration: BoxDecoration(color: DevColors.muted, borderRadius: BorderRadius.circular(4))),
+                Container(
+                  width: 120,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: DevColors.muted,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Container(width: 80, height: 12, decoration: BoxDecoration(color: DevColors.muted, borderRadius: BorderRadius.circular(4))),
+                Container(
+                  width: 80,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: DevColors.muted,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
                 const SizedBox(height: 12),
-                Container(width: 100, height: 40, decoration: BoxDecoration(color: DevColors.muted, borderRadius: BorderRadius.circular(8))),
+                Container(
+                  width: 100,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: DevColors.muted,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1271,24 +1725,43 @@ class _EmptyState extends StatelessWidget {
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(color: DevColors.muted, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: DevColors.muted,
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, size: 36, color: DevColors.mutedFg),
             ),
             const SizedBox(height: 20),
-            Text(title, style: DevTheme.display(size: 18), textAlign: TextAlign.center),
+            Text(
+              title,
+              style: DevTheme.display(size: 18),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 8),
-            Text(description, style: DevTheme.bodySecondary(size: 14), textAlign: TextAlign.center),
+            Text(
+              description,
+              style: DevTheme.bodySecondary(size: 14),
+              textAlign: TextAlign.center,
+            ),
             if (onAction != null) ...[
               const SizedBox(height: 20),
               OutlinedButton.icon(
                 onPressed: onAction,
                 icon: const Icon(Icons.explore_rounded, size: 18),
-                label: Text(actionLabel, style: DevTheme.body(size: 13, w: FontWeight.w600)),
+                label: Text(
+                  actionLabel,
+                  style: DevTheme.body(size: 13, w: FontWeight.w600),
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: DevColors.primary,
                   side: const BorderSide(color: DevColors.primary, width: 1.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ],
@@ -1318,7 +1791,11 @@ class _ErrorView extends StatelessWidget {
             const SizedBox(height: 12),
             Text('Error cargando contenido', style: DevTheme.display(size: 16)),
             const SizedBox(height: 8),
-            Text(message, style: DevTheme.bodySecondary(color: DevColors.destructive), textAlign: TextAlign.center),
+            Text(
+              message,
+              style: DevTheme.bodySecondary(color: DevColors.destructive),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: onRetry, child: const Text('Reintentar')),
           ],
@@ -1332,6 +1809,7 @@ class _ErrorView extends StatelessWidget {
 enum DiscoverFilter {
   todo('Todo', Icons.grid_view_rounded),
   betas('Betas', Icons.sports_esports_rounded),
+  devLogs('Dev logs', Icons.code_rounded),
   posts('Posts', Icons.article_rounded);
 
   const DiscoverFilter(this.label, this.icon);

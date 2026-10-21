@@ -7,6 +7,9 @@ import 'home_screen.dart';
 import 'theme.dart';
 
 void main() {
+  // Los plugins web (file_picker para elegir imágenes, share_plus,
+  // video_player, pointer_interceptor...) se registran solos: Flutter genera
+  // el registrant y lo invoca desde el entrypoint web.
   runApp(const DevPlayApp());
 }
 

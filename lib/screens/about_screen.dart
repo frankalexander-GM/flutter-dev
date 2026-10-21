@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../widgets/hero_3d_shapes.dart';
+import '../widgets/hero_video.dart';
 
 /// Pantalla "Acerca de DevPlay".
 ///
@@ -405,7 +407,7 @@ class AboutScreen extends StatelessWidget {
   Widget _buildHero() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: const LinearGradient(
@@ -422,50 +424,70 @@ class AboutScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(color: DevColors.gold35),
-                ),
-                child: const Icon(
-                  Icons.sports_esports_rounded,
-                  size: 30,
-                  color: DevColors.cream,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          // Video 3D en loop como fondo del hero (mismo asset que Inicio).
+          Positioned.fill(
+            child: HeroVideo(
+              videoAsset: 'assets/videos/hero_loop_crystal_loop',
+              posterAsset: 'assets/videos/hero_loop_crystal_loop_poster',
+              autoPlay: true,
+              mute: true,
+              shapeOpacity: 0.35,
+              shapeStyle: Hero3DStyle.home,
+              enablePointerInterceptor: false,
+              scrimOpacity: 0.38,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      'DevPlay',
-                      style: DevTheme.display(
-                        size: 26,
-                        w: FontWeight.w700,
-                      ).copyWith(letterSpacing: -0.6),
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        border: Border.all(color: DevColors.gold35),
+                      ),
+                      child: const Icon(
+                        Icons.sports_esports_rounded,
+                        size: 30,
+                        color: DevColors.cream,
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'La comunidad para devs indie y jugadores.',
-                      style: DevTheme.bodySecondary(size: 13),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'DevPlay',
+                            style: DevTheme.display(
+                              size: 26,
+                              w: FontWeight.w700,
+                            ).copyWith(letterSpacing: -0.6),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'La comunidad para devs indie y jugadores.',
+                            style: DevTheme.bodySecondary(size: 13),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

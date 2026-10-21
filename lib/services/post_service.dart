@@ -6,42 +6,26 @@ import 'api_service.dart';
 class PostService {
   /// `GET /posts?skip&limit&type&sort` → lista de `PostOut`.
   ///
-  /// El backend todavía no filtra por `type` ni ordena por `trending`: esas
-  /// dos opciones se resuelven en el cliente sobre la página descargada para
-  /// que los filtros de la UI no mientan. Si el backend las incorpora, basta
-  /// con dejar de hacer el filtrado local.
+  /// El backend filtra por `type` y ordena por `sort` ("latest" | "trending"),
+  /// así que la página que llega ya viene filtrada y ordenada.
   static Future<List<Post>> getPosts({
     int skip = 0,
     int limit = 20,
     String? type,
     String? sort, // 'latest' | 'trending'
   }) async {
-    final wantsType = type != null && type.isNotEmpty;
+    final query = StringBuffer('skip=$skip&limit=$limit');
+    if (type != null && type.isNotEmpty) {
+      query.write('&type=${Uri.encodeQueryComponent(type)}');
+    }
+    if (sort != null && sort.isNotEmpty) {
+      query.write('&sort=${Uri.encodeQueryComponent(sort)}');
+    }
 
-    // Con filtro local hace falta traer suficientes posts para no dejar la
-    // sección vacía cuando el tipo es poco frecuente.
-    final fetchSkip = wantsType ? 0 : skip;
-    final fetchLimit = wantsType ? (skip + limit + 60).clamp(limit, 100) : limit;
-
-    final query = 'skip=$fetchSkip&limit=$fetchLimit';
     final data = await ApiService.getJson('/posts?$query');
-    var posts = (data['items'] as List)
+    return (data['items'] as List)
         .map((e) => Post.fromJson(e as Map<String, dynamic>))
         .toList();
-
-    if (wantsType) {
-      final wanted = postTypeFrom(type);
-      posts = posts.where((p) => p.type == wanted).toList();
-      posts = posts.skip(skip).take(limit).toList();
-    }
-
-    if (sort == 'trending') {
-      posts.sort((a, b) => b.likesCount.compareTo(a.likesCount));
-    } else if (sort == 'latest') {
-      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    }
-
-    return posts;
   }
 
   static Future<Post> getPost(String id) async {
@@ -76,6 +60,16 @@ class PostService {
   static Future<Map<String, dynamic>> toggleBookmark(String postId) async {
     final data = await ApiService.postJson('/posts/$postId/bookmarks');
     return data as Map<String, dynamic>;
+  }
+
+  /// `POST /posts/{id}/repost` → 201 con el post original republished.
+  ///
+  /// El backend devuelve el post **original** (con su contenido) para que la
+  /// tarjeta pueda pintarse directamente. Lanza `ApiException` con código 409
+  /// si el usuario ya lo había reposteado.
+  static Future<Post> repost(String postId) async {
+    final data = await ApiService.postJson('/posts/$postId/repost');
+    return Post.fromJson(data as Map<String, dynamic>);
   }
 
   /// `GET /posts/{id}/comments` → array plano de `CommentOut`.

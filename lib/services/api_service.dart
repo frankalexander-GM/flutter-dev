@@ -150,6 +150,31 @@ class ApiService {
 
   static Future<dynamic> deleteJson(String path, {bool auth = true}) async =>
       _parse(await _send('DELETE', path, auth: auth));
+
+  /// `POST` con `multipart/form-data` (subida de archivos).
+  ///
+  /// A diferencia de [_send], no fuerza `Content-Type`: `http.MultipartRequest`
+  /// ya define el boundary correcto.
+  static Future<dynamic> postMultipart(
+    String path, {
+    required Map<String, String> fields,
+    required List<http.MultipartFile> files,
+    bool auth = true,
+  }) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
+
+    if (auth) {
+      final token = await getAccessToken();
+      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.fields.addAll(fields);
+    request.files.addAll(files);
+
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    return _parse(response);
+  }
 }
 
 /// Error de la API: `statusCode` + `detail` (el mensaje de FastAPI).

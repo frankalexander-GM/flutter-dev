@@ -12,6 +12,8 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/avatar.dart';
 import '../widgets/chat_widgets.dart';
+import '../widgets/hero_3d_shapes.dart';
+import '../widgets/hero_video.dart';
 import 'direct_chat_screen.dart';
 
 enum ChatTab { world, dms }
@@ -54,10 +56,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _scroll.addListener(_onScroll);
     _loadMessages();
     _loadUnreadDms();
-    _poll = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) => _onTick(),
-    );
+    _poll = Timer.periodic(const Duration(seconds: 5), (_) => _onTick());
   }
 
   @override
@@ -351,9 +350,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _friendly(Object e) => e is ApiException ? e.detail : '$e';
@@ -515,9 +513,11 @@ class _ChatScreenState extends State<ChatScreen> {
       itemBuilder: (context, index) {
         if (index == _messages.length) return _listTopTile();
         final msg = _messages[index];
-        final older =
-            index + 1 < _messages.length ? _messages[index + 1] : null;
-        final showHeader = older == null ||
+        final older = index + 1 < _messages.length
+            ? _messages[index + 1]
+            : null;
+        final showHeader =
+            older == null ||
             older.userId != msg.userId ||
             msg.createdAt.difference(older.createdAt).inMinutes.abs() > 5;
         final showDay =
@@ -566,9 +566,7 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: _loadMore,
             icon: const Icon(Icons.history_rounded, size: 16),
             label: const Text('Cargar mensajes anteriores'),
-            style: TextButton.styleFrom(
-              foregroundColor: DevColors.goldSoft,
-            ),
+            style: TextButton.styleFrom(foregroundColor: DevColors.goldSoft),
           ),
         ),
       );
@@ -599,7 +597,8 @@ class _ChatScreenState extends State<ChatScreen> {
       body = _EmptyState(
         icon: Icons.mark_chat_unread_rounded,
         title: 'Aún no tienes mensajes',
-        subtitle: 'Busca a alguien por su @usuario y empieza una '
+        subtitle:
+            'Busca a alguien por su @usuario y empieza una '
             'conversación privada.',
         actionLabel: 'Nuevo mensaje',
         onAction: _newDirect,
@@ -718,6 +717,19 @@ class _ChatHero extends StatelessWidget {
       ),
       child: Stack(
         children: [
+          // Video 3D en loop como fondo del hero (mismo asset que Inicio).
+          Positioned.fill(
+            child: HeroVideo(
+              videoAsset: 'assets/videos/hero_loop_crystal_loop',
+              posterAsset: 'assets/videos/hero_loop_crystal_loop_poster',
+              autoPlay: true,
+              mute: true,
+              shapeOpacity: 0.35,
+              shapeStyle: Hero3DStyle.home,
+              enablePointerInterceptor: true,
+              scrimOpacity: 0.32,
+            ),
+          ),
           Positioned(
             right: -22,
             bottom: -30,
@@ -1077,9 +1089,9 @@ class _CommunityPanel extends StatelessWidget {
   }
 
   Widget _sectionTitle(String text) => Text(
-        text,
-        style: DevTheme.labelCaps(size: 10, color: DevColors.goldSoft),
-      );
+    text,
+    style: DevTheme.labelCaps(size: 10, color: DevColors.goldSoft),
+  );
 }
 
 class _Rule extends StatelessWidget {
@@ -1105,7 +1117,10 @@ class _Rule extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: DevTheme.bodySecondary(size: 11.5, color: DevColors.mutedFg),
+              style: DevTheme.bodySecondary(
+                size: 11.5,
+                color: DevColors.mutedFg,
+              ),
             ),
           ),
         ],
@@ -1241,7 +1256,9 @@ class _EmptyState extends StatelessWidget {
               decoration: BoxDecoration(
                 color: DevColors.gold.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
-                border: Border.all(color: DevColors.gold.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: DevColors.gold.withValues(alpha: 0.3),
+                ),
               ),
               child: Icon(icon, size: 30, color: DevColors.gold),
             ),

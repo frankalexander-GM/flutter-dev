@@ -375,8 +375,12 @@ class Post {
       isAnnouncement: json['is_announcement'] as bool? ?? false,
       language: json['language'] as String?,
       parentId: json['parent_id'] as String?,
-      originalPost: json['original_post'] != null
-          ? Post.fromJson(json['original_post'] as Map<String, dynamic>)
+      // El backend serializa el post original de un repost como `repostOf`
+      // (camelCase). Se acepta también `original_post` por compatibilidad.
+      originalPost: json['repostOf'] != null || json['original_post'] != null
+          ? Post.fromJson(
+              (json['repostOf'] ?? json['original_post']) as Map<String, dynamic>,
+            )
           : null,
     );
   }

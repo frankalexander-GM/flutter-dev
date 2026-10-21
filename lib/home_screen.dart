@@ -1,6 +1,7 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -15,15 +16,20 @@ import '../screens/login_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/reports_screen.dart';
+import '../services/media_service.dart';
 import '../services/post_service.dart';
 import '../services/user_service.dart';
 import '../theme.dart';
+import '../utils/dev_link.dart';
 import '../widgets/avatar.dart';
 import '../widgets/beta_compose_sheet.dart';
 import '../widgets/drawer.dart';
 import '../widgets/header.dart';
+import '../widgets/hero_3d_shapes.dart';
+import '../widgets/hero_video.dart';
 import '../widgets/post_card.dart';
 import '../widgets/sidebar.dart';
+import '../widgets/tour_spotlight.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,11 +60,39 @@ class _HomeScreenState extends State<HomeScreen> {
   final _sidebarKey = GlobalKey();
   final _headerKey = GlobalKey();
   final _tourHelpKey = GlobalKey();
+  final _homeScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _load();
+    _openDeepLink();
+  }
+
+  /// Abre el perfil indicado en la URL (`?user=usuario`) al entrar en la app.
+  ///
+  /// Es lo que hace que el enlace copiado desde "Compartir perfil" lleve al
+  /// perfil correcto. Si el usuario no existe, se avisa y se sigue en Inicio.
+  Future<void> _openDeepLink() async {
+    final username = DevLink.currentUsername();
+    if (username == null || username.isEmpty) return;
+    final id = await DevLink.resolveUserId(username);
+    if (!mounted) return;
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No existe el usuario @$username')),
+      );
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ProfileScreen(userId: id)),
+    );
+  }
+
+  @override
+  void dispose() {
+    _homeScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -154,6 +188,22 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       if (mounted) _load();
     }
+  }
+
+  /// Abre el perfil propio en modo ajustes (editar perfil / preferencias).
+  ///
+  /// Antes el engranaje del sidebar abría "Acerca de DevPlay", lo que
+  /// confundía: pulsar el perfil te llevaba a la pantalla equivocada.
+  Future<void> _openProfileSettings() async {
+    final auth = context.read<AuthProvider>();
+    final user = auth.user;
+    if (user == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(userId: user.id, openSettings: true),
+      ),
+    );
+    if (mounted) _load();
   }
 
   Future<void> _logout() async {
@@ -436,6 +486,14 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
     }
 
+    // El tour empieza por el hero. Volvemos arriba para que todos los pasos
+    // (incluida la caja de publicar) estén montados y se puedan medir.
+    if (_homeScrollController.hasClients && _homeScrollController.offset > 0) {
+      _homeScrollController.jumpTo(0);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+
     final isDesktop = MediaQuery.sizeOf(context).width >= _sidebarBreakpoint;
     final steps = <TourStep>[
       TourStep(
@@ -461,6 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'Actividad de la comunidad',
         description: 'El feed reúne publicaciones, betas y devlogs. Usa los botones de cada tarjeta para reaccionar, guardar o comentar.',
         icon: Icons.forum_rounded,
+        focusMinHeight: 260,
       ),
       TourStep(
         targetKey: isDesktop ? _sidebarKey : _headerKey,
@@ -507,7 +566,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         helpTourKey: _tourHelpKey,
                         currentView: _currentView,
                         onViewChanged: _onViewChanged,
-                        onSettingsTap: _showAbout,
+                        onSettingsTap: _openProfileSettings,
+                        onProfileTap: _openProfile,
                         onCreatePost: _onCreatePost,
                         onCreateBeta: _onCreateBeta,
                         onCreatePoll: _onCreatePoll,
@@ -600,8 +660,12 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // Layout principal de Inicio — diseño PRD profesional
+    // Layout principal de Inicio — diseño PRD profesional.
+    // cacheExtent alto: el tour necesita que las secciones de abajo ya estén
+    // montadas para poder medirlas y hacer scroll hasta ellas.
     return CustomScrollView(
+      controller: _homeScrollController,
+      scrollCacheExtent: const ScrollCacheExtent.pixels(3000),
       slivers: [
         // 1. HERO — identidad retro gamer de DevPlay
         SliverToBoxAdapter(
@@ -620,11 +684,11 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
             child: Column(
+              key: _gamesKey,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header con icono y acción "Ver todos"
                 Row(
-                  key: _gamesKey,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(6),
@@ -1172,6 +1236,99 @@ class _HomeHero extends StatelessWidget {
       ),
       child: Stack(
         children: [
+          // Video 3D en loop. El asset ya viene ligeramente desenfocado para
+          // que no compita con el texto y para que el hero no pierda fluidez.
+          // El propio HeroVideo ya superpone el adorno 3D (Hero3DShapes).
+          Positioned.fill(
+            child: HeroVideo(
+              videoAsset: 'assets/videos/hero_loop_crystal_loop',
+              posterAsset: 'assets/videos/hero_loop_crystal_loop_poster',
+              autoPlay: true,
+              mute: true,
+              shapeOpacity: 0.35,
+              shapeStyle: Hero3DStyle.home,
+              enablePointerInterceptor: true,
+              scrimOpacity: 0.26,
+            ),
+          ),
+          // Panel de cristal sobre la zona del texto. Deja respirar el video
+          // en la derecha y mantiene legible el contenido de la izquierda.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // En pantallas estrechas el panel cubre todo el ancho para
+                  // que el texto nunca quede sobre la parte más brillante.
+                  final wide = constraints.maxWidth >= 760;
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: wide ? 0.70 : 1.0,
+                      heightFactor: 1.0,
+                      child: Container(
+                        margin: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          gradient: const LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              Color(0x8C1C1411),
+                              Color(0x591C1411),
+                              Color(0x001C1411),
+                            ],
+                            stops: [0.0, 0.58, 1.0],
+                          ),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.09),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          // Velo cálido muy suave: unifica el video con la paleta sin apagarlo.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      const Color(0x2E1C1411),
+                      const Color(0x1A1C1411),
+                      const Color(0x0D1C1411),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.45, 0.72, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Sombra vertical suave para separar el hero del feed.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0x1F1C1411),
+                      Colors.transparent,
+                      const Color(0x661C1411),
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
           // Resplandor cálido superior derecho
           Positioned(
             top: -90,
@@ -1645,13 +1802,18 @@ class _CreateDock extends StatelessWidget {
         await _openPollComposer(context);
         return;
       }
-      final content = await showDialog<String>(
+      final draft = await showDialog<_ComposeResult>(
         context: context,
         builder: (ctx) => _ComposeDialog(type: action),
       );
-      if (content != null && content.isNotEmpty && context.mounted) {
+      if (draft != null && context.mounted) {
+        if (draft.content.isEmpty && draft.media.isEmpty) return;
         try {
-          await PostService.createPost(content: content, type: action);
+          await PostService.createPost(
+            content: draft.content,
+            type: action,
+            media: draft.media,
+          );
           onCreated();
           if (context.mounted) {
             ScaffoldMessenger.of(context)
@@ -1939,33 +2101,140 @@ class _ComposeDialog extends StatefulWidget {
 class _ComposeDialogState extends State<_ComposeDialog> {
   final _controller = TextEditingController();
 
+  /// Archivos ya subidos (URL publica + tipo) adjuntos a la publicacion.
+  final List<Map<String, String>> _media = [];
+  bool _uploading = false;
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
+  /// Sube un archivo del dispositivo y lo adjunta a la publicacion.
+  Future<void> _attach() async {
+    if (_uploading || _media.length >= 4) return;
+    setState(() => _uploading = true);
+    try {
+      final uploaded = await MediaService.pickAndUpload(allowVideo: true);
+      if (!mounted) return;
+      if (uploaded != null) {
+        setState(() {
+          _media.add({'url': uploaded.url, 'kind': uploaded.kind});
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo subir: $e'),
+          backgroundColor: DevColors.destructive,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canPublish =
+        _controller.text.trim().isNotEmpty || _media.isNotEmpty;
+
     return AlertDialog(
       backgroundColor: DevColors.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text('Nueva publicación', style: DevTheme.display(size: 16)),
-      content: TextField(
-        controller: _controller,
-        maxLines: 4,
-        autofocus: true,
-        style: DevTheme.body(size: 14),
-        decoration: InputDecoration(
-          hintText: '¿Qué está pasando en tu proyecto?',
-          hintStyle: DevTheme.body(size: 13, color: DevColors.mutedFg),
-          filled: true,
-          fillColor: DevColors.cardRaised,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: DevColors.border),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _controller,
+            maxLines: 4,
+            autofocus: true,
+            style: DevTheme.body(size: 14),
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: '¿Qué está pasando en tu proyecto?',
+              hintStyle: DevTheme.bodySecondary(size: 13, color: DevColors.mutedFg),
+              filled: true,
+              fillColor: DevColors.cardRaised,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: DevColors.border),
+              ),
+            ),
           ),
-        ),
+          if (_media.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 74,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _media.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, i) => Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        _media[i]['url']!,
+                        width: 74,
+                        height: 74,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 74,
+                          height: 74,
+                          color: DevColors.cardRaised,
+                          child: const Icon(
+                            Icons.broken_image_outlined,
+                            color: DevColors.mutedFg,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 2,
+                      right: 2,
+                      child: InkWell(
+                        onTap: () => setState(() => _media.removeAt(i)),
+                        child: const CircleAvatar(
+                          radius: 9,
+                          backgroundColor: Color(0xCC1C1411),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 12,
+                            color: DevColors.cream,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: (_uploading || _media.length >= 4) ? null : _attach,
+            icon: _uploading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.add_photo_alternate_outlined, size: 18),
+            label: Text(
+              _uploading
+                  ? 'Subiendo...'
+                  : _media.length >= 4
+                      ? 'Maximo 4 archivos'
+                      : 'Anadir imagen o video',
+              style: DevTheme.body(size: 12.5, color: DevColors.primary),
+            ),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -1976,7 +2245,15 @@ class _ComposeDialogState extends State<_ComposeDialog> {
           ),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          onPressed: (_uploading || !canPublish)
+              ? null
+              : () => Navigator.pop(
+                    context,
+                    _ComposeResult(
+                      content: _controller.text.trim(),
+                      media: List.of(_media),
+                    ),
+                  ),
           style: ElevatedButton.styleFrom(
             backgroundColor: DevColors.primary,
             foregroundColor: DevColors.primaryFg,
@@ -1986,6 +2263,14 @@ class _ComposeDialogState extends State<_ComposeDialog> {
       ],
     );
   }
+}
+
+/// Resultado del dialogo de composicion: texto + archivos adjuntos.
+class _ComposeResult {
+  final String content;
+  final List<Map<String, String>> media;
+
+  const _ComposeResult({required this.content, required this.media});
 }
 
 class _Option extends StatelessWidget {
@@ -2026,11 +2311,17 @@ class TourStep {
   final String description;
   final IconData icon;
 
+  /// Altura mínima del área enfocada. Sirve para pasos cuyo objetivo natural
+  /// es una franja pequeña (por ejemplo, el título del feed) pero que deben
+  /// mostrar también su contenido inmediato.
+  final double? focusMinHeight;
+
   const TourStep({
     required this.targetKey,
     required this.title,
     required this.description,
     required this.icon,
+    this.focusMinHeight,
   });
 }
 
@@ -2087,29 +2378,55 @@ class _TourContentState extends State<_TourContent> {
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
+  Rect? _focusRect(Size size) {
+    var rect = _targetRect();
+    if (rect == null) return null;
+
+    final minHeight = _step.focusMinHeight;
+    if (minHeight != null && rect.height < minHeight) {
+      final extra = minHeight - rect.height;
+      final maxTop = size.height - minHeight;
+      final top = (rect.top - extra / 2)
+          .clamp(0.0, maxTop < 0 ? 0.0 : maxTop)
+          .toDouble();
+      rect = Rect.fromLTWH(rect.left, top, rect.width, minHeight);
+    }
+
+    rect = rect.intersect(Offset.zero & size);
+    if (rect.width <= 1 || rect.height <= 1) return null;
+    return rect;
+  }
+
   Future<void> _focusStep(int index, {bool animate = true}) async {
     if (!mounted || index < 0 || index >= widget.steps.length) return;
-    setState(() {
-      _index = index;
-      _moving = true;
-    });
+    setState(() => _moving = true);
 
+    // Primero desplazamos el objetivo. Si cambiáramos el índice antes, el
+    // overlay podría quedar completamente oscuro durante la animación.
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
 
     final ctx = widget.steps[index].targetKey.currentContext;
     if (ctx != null && ctx.mounted) {
-      await Scrollable.ensureVisible(
-        ctx,
-        duration: animate ? const Duration(milliseconds: 320) : Duration.zero,
-        curve: Curves.easeOutCubic,
-        alignment: 0.18,
-      );
+      try {
+        await Scrollable.ensureVisible(
+          ctx,
+          duration: animate ? const Duration(milliseconds: 320) : Duration.zero,
+          curve: Curves.easeOutCubic,
+          alignment: 0.18,
+        );
+      } catch (_) {
+        // Si el objetivo no está dentro de un scroll, seguimos con el paso.
+      }
       if (!mounted) return;
       await WidgetsBinding.instance.endOfFrame;
     }
 
-    if (mounted) setState(() => _moving = false);
+    if (!mounted) return;
+    setState(() {
+      _index = index;
+      _moving = false;
+    });
   }
 
   void _next() {
@@ -2128,6 +2445,7 @@ class _TourContentState extends State<_TourContent> {
 
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (_moving) return KeyEventResult.handled;
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.arrowRight ||
         key == LogicalKeyboardKey.space ||
@@ -2150,35 +2468,47 @@ class _TourContentState extends State<_TourContent> {
   Widget build(BuildContext context) {
     final step = _step;
     final size = MediaQuery.sizeOf(context);
-    Rect? rect = _targetRect();
-    if (rect != null) {
-      rect = rect.intersect(Offset.zero & size);
-      if (rect.width <= 1 || rect.height <= 1) rect = null;
-    }
+    final rect = _focusRect(size);
 
     final cardWidth = size.width < 560
         ? (size.width - 32).clamp(280.0, 380.0).toDouble()
         : 380.0;
-    final cardHeightHint = 270.0;
+    final cardHeightHint = 230.0;
 
     double cardTop;
+    double cardLeft = (size.width - cardWidth) / 2;
+
     if (rect == null) {
       cardTop = (size.height - cardHeightHint) / 2;
-    } else if (rect.bottom + 16 + cardHeightHint <= size.height) {
-      cardTop = rect.bottom + 16;
-    } else if (rect.top - 16 - cardHeightHint >= 16) {
-      cardTop = rect.top - 16 - cardHeightHint;
     } else {
-      cardTop = (size.height - cardHeightHint) / 2;
-    }
-    cardTop = cardTop.clamp(16.0, size.height - 16).toDouble();
+      final spaceBelow = size.height - rect.bottom - 24;
+      final spaceAbove = rect.top - 24;
+      final fitsRight = rect.right + 16 + cardWidth <= size.width - 16;
+      final fitsLeft = rect.left - 16 - cardWidth >= 16;
 
-    double cardLeft = (size.width - cardWidth) / 2;
-    if (rect != null &&
-        rect.right + 16 + cardWidth <= size.width &&
-        rect.width < size.width * 0.45) {
-      cardLeft = rect.right + 16;
+      if (spaceBelow >= cardHeightHint) {
+        cardTop = rect.bottom + 16;
+      } else if (spaceAbove >= cardHeightHint) {
+        cardTop = rect.top - cardHeightHint - 16;
+      } else if (fitsRight && rect.width < size.width * 0.58) {
+        // Sidebar u objetivo estrecho: tarjeta al lado, no encima.
+        cardLeft = rect.right + 16;
+        cardTop = (size.height - cardHeightHint) / 2;
+      } else if (fitsLeft && rect.width < size.width * 0.58) {
+        cardLeft = rect.left - cardWidth - 16;
+        cardTop = (size.height - cardHeightHint) / 2;
+      } else if (rect.top > size.height / 2) {
+        cardTop = 16;
+      } else {
+        cardTop = size.height - cardHeightHint - 16;
+      }
     }
+
+    cardTop = cardTop.clamp(16.0, size.height - 16).toDouble();
+    if (cardLeft < 16) cardLeft = 16;
+    final maxLeft = size.width - cardWidth - 16;
+    if (maxLeft >= 16 && cardLeft > maxLeft) cardLeft = maxLeft;
+
     final availableHeight = (size.height - cardTop - 16)
         .clamp(180.0, size.height)
         .toDouble();
@@ -2191,21 +2521,21 @@ class _TourContentState extends State<_TourContent> {
           // Oscurece todo excepto la zona del objetivo (spotlight).
           Positioned.fill(
             child: IgnorePointer(
-              child: CustomPaint(painter: _TourSpotlightPainter(target: rect)),
+              child: CustomPaint(painter: TourSpotlightPainter(target: rect)),
             ),
           ),
 
           // Borde tipo cristal alrededor del objetivo (sin tinte amarillo).
           if (rect != null)
             Positioned(
-              left: rect.left - 8,
-              top: rect.top - 8,
+              left: rect.left - 10,
+              top: rect.top - 10,
               child: IgnorePointer(
                 child: Container(
-                  width: rect.width + 16,
-                  height: rect.height + 16,
+                  width: rect.width + 20,
+                  height: rect.height + 20,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.62),
                       width: 1.5,
@@ -2401,34 +2731,5 @@ class _TourContentState extends State<_TourContent> {
         ],
       ),
     );
-  }
-}
-
-class _TourSpotlightPainter extends CustomPainter {
-  final Rect? target;
-
-  const _TourSpotlightPainter({required this.target});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final full = Path()..addRect(Offset.zero & size);
-    final dimPaint = Paint()..color = Colors.black.withValues(alpha: 0.70);
-
-    if (target == null) {
-      canvas.drawRect(Offset.zero & size, dimPaint);
-      return;
-    }
-
-    final hole = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(target!.inflate(8), const Radius.circular(16)),
-      );
-    final spotlight = Path.combine(PathOperation.difference, full, hole);
-    canvas.drawPath(spotlight, dimPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _TourSpotlightPainter oldDelegate) {
-    return oldDelegate.target != target;
   }
 }

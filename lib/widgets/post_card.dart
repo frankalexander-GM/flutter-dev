@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/post.dart';
 import '../services/post_service.dart';
 import '../theme.dart';
+import '../utils/dev_link.dart';
 import '../utils/format.dart';
 import 'avatar.dart';
 import 'comments_sheet.dart';
@@ -13,7 +14,7 @@ import 'report_dialog.dart';
 /// Tarjeta de publicación de DevPlay.
 ///
 /// Reutilizable en Inicio, Descubrir y Perfil. Las interacciones (like,
-/// guardar, comentar y encuestas) se envían a la API real. Compartir copia la
+/// comentar, repost y encuestas) se envían a la API real. Compartir copia la
 /// publicación al portapapeles: el backend no tiene endpoint de shares.
 class PostCard extends StatefulWidget {
   final Post post;
@@ -21,12 +22,23 @@ class PostCard extends StatefulWidget {
   final VoidCallback? onProfileTap;
   final void Function(String)? onGameTap;
 
+  /// Se dispara cuando el visitante repostea la publicación, para que el
+  /// resto de la app pueda refrescar el feed.
+  final VoidCallback? onReposted;
+
+  /// Muestra el botón de guardar (colección privada del visitante).
+  ///
+  /// El feed general lo deja oculto (el perfil sí lo muestra, según su PRD).
+  final bool showSave;
+
   const PostCard({
     super.key,
     required this.post,
     this.compact = false,
     this.onProfileTap,
     this.onGameTap,
+    this.onReposted,
+    this.showSave = false,
   });
 
   @override
@@ -37,8 +49,14 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   late bool _liked = widget.post.liked;
   late int _likes = widget.post.likesCount;
   late int _comments = widget.post.commentsCount;
+
+  /// Estado del repost: evita dobles envíos.
+  bool _reposting = false;
+  bool _reposted = false;
+
+  /// Estado de "guardado" (colección privada del visitante).
   late bool _bookmarked = widget.post.bookmarked;
-  bool _busy = false;
+  bool _saving = false;
 
   late final AnimationController _likeController;
   late final Animation<double> _likeScale;
@@ -62,7 +80,6 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       _liked = widget.post.liked;
       _likes = widget.post.likesCount;
       _comments = widget.post.commentsCount;
-      _bookmarked = widget.post.bookmarked;
     }
   }
 
@@ -105,34 +122,76 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     }
   }
 
+  Future<void> _share() async {
+    final username = widget.post.author?.username ?? 'DevPlay';
+    final content = widget.post.content.trim();
+    final link = DevLink.profileUrl(username);
+    final text = content.isEmpty
+        ? 'Mira esta publicación de @$username en DevPlay\n$link'
+        : '$content\n\n— @$username en DevPlay\n$link';
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Publicación copiada al portapapeles')),
+    );
+  }
+
+  /// Guarda o quita la publicación de la colección privada del visitante
+  /// (`POST /posts/{id}/bookmarks`).
   Future<void> _toggleSave() async {
-    if (_busy) return;
-    _busy = true;
+    if (_saving) return;
+    _saving = true;
     final wasSaved = _bookmarked;
     setState(() => _bookmarked = !_bookmarked);
     try {
       final res = await PostService.toggleBookmark(widget.post.id);
       if (!mounted) return;
       setState(() => _bookmarked = res['active'] as bool? ?? _bookmarked);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _bookmarked = wasSaved);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo guardar: $e'),
+          backgroundColor: DevColors.destructive,
+        ),
+      );
     } finally {
-      _busy = false;
+      if (mounted) setState(() => _saving = false);
     }
   }
 
-  Future<void> _share() async {
-    final username = widget.post.author?.username ?? 'DevPlay';
-    final content = widget.post.content.trim();
-    final text = content.isEmpty
-        ? 'Mira esta publicación de @$username en DevPlay\n${Uri.base.origin}'
-        : '$content\n\n— @$username en DevPlay\n${Uri.base.origin}';
-    await Clipboard.setData(ClipboardData(text: text));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Publicación copiada al portapapeles')),
-    );
+  /// Repostea la publicación (`POST /posts/{id}/repost`).
+  Future<void> _repost() async {
+    if (_reposting) return;
+    setState(() => _reposting = true);
+    try {
+      await PostService.repost(widget.post.id);
+      if (!mounted) return;
+      setState(() => _reposted = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Repost publicado en tu perfil'),
+          backgroundColor: DevColors.consoleGreen,
+        ),
+      );
+      widget.onReposted?.call();
+    } catch (e) {
+      if (!mounted) return;
+      final already = e.toString().contains('409');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            already
+                ? 'Ya habías reposteado esta publicación'
+                : 'No se pudo repostear: $e',
+          ),
+          backgroundColor: already ? DevColors.muted : DevColors.destructive,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _reposting = false);
+    }
   }
 
   void _openComments() {
@@ -175,6 +234,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Atribución: si es un repost, se muestra de quién es el original.
+          if (post.originalPost != null) _buildRepostAttribution(),
           if (cover != null)
             AspectRatio(
               aspectRatio: 16 / 9,
@@ -260,6 +321,35 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 
+  /// Cabecera de un repost: "X ha republicado esto" con acceso al original.
+  Widget _buildRepostAttribution() {
+    final original = widget.post.originalPost!;
+    final author = original.author;
+    final username = author?.username ?? 'desconocido';
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        widget.compact ? 10 : 14,
+        widget.compact ? 8 : 12,
+        14,
+        0,
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.repeat_rounded, size: 15, color: DevColors.consoleGreen),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'Republicado de @$username',
+              style: DevTheme.bodySecondary(size: 11.5),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(String username, PostAuthor? author) {
     return Row(
       children: [
@@ -338,15 +428,26 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
           onTap: _openComments,
         ),
         _ActionButton(
+          icon: _reposted
+              ? Icons.repeat_rounded
+              : Icons.repeat_on_rounded,
+          color: _reposted ? DevColors.consoleGreen : DevColors.mutedFg,
+          onTap: _reposting || _reposted ? null : _repost,
+        ),
+        _ActionButton(
           icon: Icons.ios_share_rounded,
           onTap: _share,
         ),
-        const Spacer(),
-        _ActionButton(
-          icon: _bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-          color: _bookmarked ? DevColors.gold : DevColors.mutedFg,
-          onTap: _toggleSave,
-        ),
+        if (widget.showSave) ...[
+          const Spacer(),
+          _ActionButton(
+            icon: _bookmarked
+                ? Icons.bookmark_rounded
+                : Icons.bookmark_border_rounded,
+            color: _bookmarked ? DevColors.gold : DevColors.mutedFg,
+            onTap: _saving ? null : _toggleSave,
+          ),
+        ],
       ],
     );
   }

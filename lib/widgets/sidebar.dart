@@ -25,6 +25,10 @@ class DevSidebar extends StatefulWidget {
   final VoidCallback? onOpenStore;
   final VoidCallback? onOpenReports;
   final VoidCallback? onShowAbout;
+
+  /// Abre el perfil del usuario en sesión (tarjeta del pie del sidebar).
+  final VoidCallback? onProfileTap;
+
   final GlobalKey? helpTourKey;
 
   const DevSidebar({
@@ -41,6 +45,7 @@ class DevSidebar extends StatefulWidget {
     this.onOpenStore,
     this.onOpenReports,
     this.onShowAbout,
+    this.onProfileTap,
   });
 
   @override
@@ -374,6 +379,46 @@ class _DevSidebarState extends State<DevSidebar> {
   }
 
   Widget _buildUserCard(user, bool canCreate) {
+    // La tarjeta abre el perfil del usuario en sesión. Antes no era
+    // clicable y solo respondía el engranaje, que llevaba a "Acerca de".
+    final avatar = UserAvatar(
+      username: user.username,
+      avatar: user.avatar,
+      size: _sidebarCompact ? 32 : 36,
+    );
+
+    // El bloque de texto va FUERA del InkWell: un `Expanded` no puede vivir
+    // dentro de un `Padding` (exige un ancestro Flex).
+    final info = !_sidebarCompact
+        ? Expanded(
+            child: InkWell(
+              onTap: widget.onProfileTap,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.username,
+                      style: DevTheme.body(size: 13, w: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      user.isGuest
+                          ? 'Invitado'
+                          : user.role == 'DEV'
+                          ? 'Desarrollador'
+                          : 'Jugador',
+                      style: DevTheme.body(size: 10, color: DevColors.mutedFg),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        : const SizedBox.shrink();
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: _sidebarCompact ? 8 : 12,
@@ -384,31 +429,17 @@ class _DevSidebarState extends State<DevSidebar> {
       ),
       child: Row(
         children: [
-          if (!_sidebarCompact) ...[
-            UserAvatar(username: user.username, avatar: user.avatar, size: 36),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user.username,
-                    style: DevTheme.body(size: 13, w: FontWeight.w600),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    user.isGuest
-                        ? 'Invitado'
-                        : user.role == 'DEV'
-                        ? 'Desarrollador'
-                        : 'Jugador',
-                    style: DevTheme.body(size: 10, color: DevColors.mutedFg),
-                  ),
-                ],
-              ),
+          InkWell(
+            onTap: widget.onProfileTap,
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: avatar,
             ),
-          ] else ...[
-            UserAvatar(username: user.username, avatar: user.avatar, size: 32),
+          ),
+          if (!_sidebarCompact) ...[
+            const SizedBox(width: 10),
+            info,
           ],
           if (!_sidebarCompact)
             IconButton(
@@ -580,10 +611,12 @@ class _CreateButton extends StatelessWidget {
               ),
               if (!compact) ...[
                 const SizedBox(width: 10),
-                Text(
-                  item.label,
-                  style: DevTheme.body(size: 13, w: FontWeight.w500),
-                  overflow: TextOverflow.ellipsis,
+                Flexible(
+                  child: Text(
+                    item.label,
+                    style: DevTheme.body(size: 13, w: FontWeight.w500),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ],

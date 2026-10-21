@@ -42,6 +42,7 @@ class UserService {
     String? location,
     String? website,
     String? profession,
+    List<String>? tags,
   }) async {
     final data = await ApiService.patchJson(
       '/users/me/profile',
@@ -53,6 +54,7 @@ class UserService {
         'location': ?location,
         'website': ?website,
         'profession': ?profession,
+        'tags': ?tags,
       },
     );
     return UserMe.fromJson(data as Map<String, dynamic>);
@@ -154,5 +156,44 @@ class UserService {
   static Future<BookmarkListResponse> getMyBookmarks() async {
     final data = await ApiService.getJson('/users/me/bookmarks');
     return BookmarkListResponse.fromJson(data as Map<String, dynamic>);
+  }
+
+  // ---------------------------- Perfil: pestañas -----------------------------
+
+  /// `GET /users/{id}/likes` → publicaciones que el usuario marcó como
+  /// "me gusta" (pestaña "Me gusta").
+  static Future<List<Post>> getLikedPosts(String userId) async {
+    final data = await ApiService.getJson('/users/$userId/likes');
+    return (data['items'] as List? ?? [])
+        .map((e) => Post.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// `GET /users/{id}/media` → galería de imágenes y videos del usuario.
+  static Future<List<ProfileMedia>> getMedia(String userId) async {
+    final data = await ApiService.getJson('/users/$userId/media');
+    return (data['items'] as List? ?? [])
+        .map((e) => ProfileMedia.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// `GET /users/me/stats` → estadísticas reales del creador.
+  static Future<UserStats> getMyStats() async {
+    final data = await ApiService.getJson('/users/me/stats');
+    final stats = data['stats'];
+    if (stats is Map<String, dynamic>) {
+      return UserStats.fromJson(stats);
+    }
+    return const UserStats();
+  }
+
+  /// `PATCH /users/me/profile` → actualiza el juego destacado y la privacidad
+  /// del perfil (los campos `isPrivate` viven en `/security/privacy`).
+  static Future<bool> setPrivacy({required bool isPrivate}) async {
+    await ApiService.patchJson(
+      '/security/privacy',
+      body: {'isPrivate': isPrivate},
+    );
+    return true;
   }
 }

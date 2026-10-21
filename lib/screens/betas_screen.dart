@@ -6,6 +6,8 @@ import '../models/beta.dart';
 import '../services/beta_service.dart';
 import '../theme.dart';
 import '../widgets/beta_compose_sheet.dart';
+import '../widgets/hero_3d_shapes.dart';
+import '../widgets/hero_video.dart';
 
 /// Vista de Betas: laboratorio de builds tempranas de la comunidad.
 class BetasScreen extends StatefulWidget {
@@ -551,6 +553,19 @@ class _BetasHero extends StatelessWidget {
       ),
       child: Stack(
         children: [
+          // Video 3D en loop como fondo del hero (mismo asset que Inicio).
+          Positioned.fill(
+            child: HeroVideo(
+              videoAsset: 'assets/videos/hero_loop_crystal_loop',
+              posterAsset: 'assets/videos/hero_loop_crystal_loop_poster',
+              autoPlay: true,
+              mute: true,
+              shapeOpacity: 0.35,
+              shapeStyle: Hero3DStyle.home,
+              enablePointerInterceptor: false,
+              scrimOpacity: 0.32,
+            ),
+          ),
           // Resplandor cálido
           Positioned(
             top: -90,
