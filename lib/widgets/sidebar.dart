@@ -25,11 +25,13 @@ class DevSidebar extends StatefulWidget {
   final VoidCallback? onOpenStore;
   final VoidCallback? onOpenReports;
   final VoidCallback? onShowAbout;
+  final GlobalKey? helpTourKey;
 
   const DevSidebar({
     super.key,
     required this.currentView,
     required this.onViewChanged,
+    this.helpTourKey,
     this.onSettingsTap,
     this.onCreatePost,
     this.onCreateBeta,
@@ -355,7 +357,8 @@ class _DevSidebarState extends State<DevSidebar> {
   Widget _buildHelpItems() {
     return Column(
       children: kHelpItems.map((item) {
-        return _CreateButton(
+        return _HelpButton(
+          key: item.label == 'Tour guiado' ? widget.helpTourKey : null,
           item: item,
           compact: _sidebarCompact,
           onTap: () {
@@ -584,6 +587,94 @@ class _CreateButton extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Accesos de ayuda con acabado cristal para que no se pierdan sobre el
+/// fondo oscuro del sidebar. El tour usa una key propia para resaltarlo.
+class _HelpButton extends StatelessWidget {
+  final NavItem item;
+  final bool compact;
+  final VoidCallback onTap;
+
+  const _HelpButton({
+    super.key,
+    required this.item,
+    required this.compact,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isTour = item.label == 'Tour guiado';
+    final gradient = isTour
+        ? const LinearGradient(
+            colors: [Color(0xFFE08A52), Color(0xFFB8862E)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : const LinearGradient(
+            colors: [Color(0xFF9AA7B4), Color(0xFF6B7A8A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 10,
+              vertical: compact ? 6 : 8,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.055),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.11)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: compact ? 32 : 34,
+                  height: compact ? 32 : 34,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: gradient,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Icon(
+                    item.icon,
+                    size: compact ? 16 : 18,
+                    color: Colors.white,
+                  ),
+                ),
+                if (!compact) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      item.label,
+                      style: DevTheme.body(
+                        size: 12.5,
+                        w: FontWeight.w600,
+                        color: DevColors.cream,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),

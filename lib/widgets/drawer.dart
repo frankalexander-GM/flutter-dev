@@ -684,9 +684,9 @@ class _HelpButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: DevColors.muted.withValues(alpha: 0.3),
+            color: Colors.white.withValues(alpha: 0.055),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: DevColors.border),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.11)),
           ),
           child: Row(
             children: [
@@ -700,7 +700,16 @@ class _HelpButton extends StatelessWidget {
                 child: Icon(icon, size: 18, color: Colors.white),
               ),
               const SizedBox(width: 12),
-              Text(label, style: DevTheme.body(size: 13, w: FontWeight.w600)),
+              Expanded(
+                child: Text(
+                  label,
+                  style: DevTheme.body(
+                    size: 13,
+                    w: FontWeight.w600,
+                    color: DevColors.cream,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

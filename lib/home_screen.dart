@@ -53,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _createKey = GlobalKey();
   final _sidebarKey = GlobalKey();
   final _headerKey = GlobalKey();
+  final _tourHelpKey = GlobalKey();
 
   @override
   void initState() {
@@ -469,6 +470,13 @@ class _HomeScreenState extends State<HomeScreen> {
             : 'Toca el menú para moverte entre Inicio, Betas, Chat Mundial y Tienda. También puedes repetir este tour desde Ayuda.',
         icon: Icons.menu_rounded,
       ),
+      if (isDesktop)
+        TourStep(
+          targetKey: _tourHelpKey,
+          title: 'Ayuda y tour guiado',
+          description: 'Aquí puedes repetir este tour cuando quieras y abrir los términos, la privacidad y las normas de la comunidad.',
+          icon: Icons.tour_rounded,
+        ),
     ];
 
     _TourOverlay(steps: steps).show(context);
@@ -496,6 +504,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Sidebar fijo
                       DevSidebar(
                         key: _sidebarKey,
+                        helpTourKey: _tourHelpKey,
                         currentView: _currentView,
                         onViewChanged: _onViewChanged,
                         onSettingsTap: _showAbout,
