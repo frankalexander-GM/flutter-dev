@@ -13,7 +13,7 @@ class ShareSheet extends StatelessWidget {
 
   String get _link => 'https://devplay.gg/p/${post.id}';
   String get _text =>
-      'Mira este post de @${post.author.username} en DevPlay 🎮\n${post.content}\n$_link';
+      'Mira este post de @${post.author?.username ?? 'usuario'} en DevPlay 🎮\n${post.content}\n$_link';
 
   static Future<bool?> show(BuildContext context, Post post) {
     return showModalBottomSheet<bool>(

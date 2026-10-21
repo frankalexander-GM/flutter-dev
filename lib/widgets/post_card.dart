@@ -2,793 +2,555 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/post.dart';
+import '../services/post_service.dart';
 import '../theme.dart';
+import '../utils/dev_link.dart';
 import '../utils/format.dart';
 import 'avatar.dart';
 import 'comments_sheet.dart';
-import 'console_screen.dart';
-import 'share_sheet.dart';
+import 'post_poll.dart';
+import 'report_dialog.dart';
 
-/// Tarjeta de publicación de DevPlay — PostCard de la web mejorada:
-/// like con pop + confeti + doble-tap, comentarios reales (sheet),
-/// compartir nativo + copiar enlace, guardar (bookmark) y sección beta.
+/// Tarjeta de publicación de DevPlay.
+///
+/// Reutilizable en Inicio, Descubrir y Perfil. Las interacciones (like,
+/// comentar, repost y encuestas) se envían a la API real. Compartir copia la
+/// publicación al portapapeles: el backend no tiene endpoint de shares.
 class PostCard extends StatefulWidget {
   final Post post;
-  const PostCard({super.key, required this.post});
+  final bool compact;
+  final VoidCallback? onProfileTap;
+  final void Function(String)? onGameTap;
+
+  /// Se dispara cuando el visitante repostea la publicación, para que el
+  /// resto de la app pueda refrescar el feed.
+  final VoidCallback? onReposted;
+
+  /// Muestra el botón de guardar (colección privada del visitante).
+  ///
+  /// El feed general lo deja oculto (el perfil sí lo muestra, según su PRD).
+  final bool showSave;
+
+  const PostCard({
+    super.key,
+    required this.post,
+    this.compact = false,
+    this.onProfileTap,
+    this.onGameTap,
+    this.onReposted,
+    this.showSave = false,
+  });
 
   @override
   State<PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard>
-    with SingleTickerProviderStateMixin {
+class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
   late bool _liked = widget.post.liked;
   late int _likes = widget.post.likesCount;
-  late bool _saved = widget.post.saved;
-  late int _shares = widget.post.sharesCount;
-  late int _commentsCount = widget.post.commentsCount;
-  late List<PostComment> _comments = _seedComments(widget.post);
-  bool _following = false;
+  late int _comments = widget.post.commentsCount;
 
-  bool _burst = false;
-  int _burstTick = 0;
-  bool _bigHeart = false;
+  /// Estado del repost: evita dobles envíos.
+  bool _reposting = false;
+  bool _reposted = false;
 
-  late final AnimationController _pop = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 280),
-    lowerBound: 0.8,
-    upperBound: 1.25,
-  )..value = 1.0;
+  /// Estado de "guardado" (colección privada del visitante).
+  late bool _bookmarked = widget.post.bookmarked;
+  bool _saving = false;
+
+  late final AnimationController _likeController;
+  late final Animation<double> _likeScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _likeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+    _likeScale = Tween<double>(begin: 1.0, end: 1.25).animate(
+      CurvedAnimation(parent: _likeController, curve: Curves.easeOutBack),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.id != widget.post.id) {
+      _liked = widget.post.liked;
+      _likes = widget.post.likesCount;
+      _comments = widget.post.commentsCount;
+    }
+  }
 
   @override
   void dispose() {
-    _pop.dispose();
+    _likeController.dispose();
     super.dispose();
   }
 
-  static List<PostComment> _seedComments(Post post) {
-    if (post.commentsCount == 0) return [];
-    // Semilla visual para que el sheet no abra vacío.
-    return [
-      PostComment(
-        username: 'luna_dev',
-        text: '¡Buenísimo! Ya lo estoy probando 👀',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 40)),
-      ),
-      if (post.commentsCount > 1)
-        PostComment(
-          username: 'nick_og',
-          text: 'Necesito la beta ya mismo 😅',
-          createdAt:
-              DateTime.now().subtract(const Duration(minutes: 18)),
-        ),
-    ];
+  static String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays >= 30) return '${diff.inDays ~/ 30}m';
+    if (diff.inDays > 0) return '${diff.inDays}d';
+    if (diff.inHours > 0) return '${diff.inHours}h';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}min';
+    return 'ahora';
   }
 
-  void _toggleLike({bool fromDoubleTap = false}) {
+  Future<void> _toggleLike() async {
+    final wasLiked = _liked;
     setState(() {
-      if (_liked && !fromDoubleTap) {
-        _liked = false;
-        _likes = (_likes - 1).clamp(0, 9999999);
-      } else if (!_liked) {
-        _liked = true;
-        _likes++;
-        _burstTick++;
-        _burst = true;
-        _pop.forward(from: 0.8).then((_) {
-          if (mounted) _pop.reverse();
-        });
-        HapticFeedback.lightImpact();
-      } else if (fromDoubleTap) {
-        // Ya con like: solo muestra el corazón grande.
-        _pop.forward(from: 0.8).then((_) {
-          if (mounted) _pop.reverse();
-        });
-      }
+      _liked = !_liked;
+      _likes += _liked ? 1 : -1;
     });
-  }
-
-  void _doubleTapLike() {
-    setState(() => _bigHeart = true);
-    _toggleLike(fromDoubleTap: true);
-    Future.delayed(const Duration(milliseconds: 650), () {
-      if (mounted) setState(() => _bigHeart = false);
-    });
-  }
-
-  Future<void> _openComments() async {
-    final updated =
-        await CommentsSheet.show(context, widget.post, _comments);
-    if (updated != null && mounted) {
+    if (_liked) _likeController.forward(from: 0.0);
+    try {
+      final res = await PostService.toggleLike(widget.post.id);
+      if (!mounted) return;
       setState(() {
-        _comments = updated;
-        _commentsCount = updated.length +
-            (widget.post.commentsCount - _seedComments(widget.post).length)
-                .clamp(0, 99999);
-        if (_commentsCount < updated.length) {
-          _commentsCount = updated.length;
-        }
+        _liked = res['active'] as bool? ?? _liked;
+        _likes = res['count'] as int? ?? _likes;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      // Revertir si el backend rechaza (p. ej. sin sesión).
+      setState(() {
+        _liked = wasLiked;
+        _likes += wasLiked ? 1 : -1;
       });
     }
   }
 
-  Future<void> _openShare() async {
-    final shared = await ShareSheet.show(context, widget.post);
-    if (shared == true && mounted) {
-      setState(() => _shares++);
+  Future<void> _share() async {
+    final username = widget.post.author?.username ?? 'DevPlay';
+    final content = widget.post.content.trim();
+    final link = DevLink.profileUrl(username);
+    final text = content.isEmpty
+        ? 'Mira esta publicación de @$username en DevPlay\n$link'
+        : '$content\n\n— @$username en DevPlay\n$link';
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Publicación copiada al portapapeles')),
+    );
+  }
+
+  /// Guarda o quita la publicación de la colección privada del visitante
+  /// (`POST /posts/{id}/bookmarks`).
+  Future<void> _toggleSave() async {
+    if (_saving) return;
+    _saving = true;
+    final wasSaved = _bookmarked;
+    setState(() => _bookmarked = !_bookmarked);
+    try {
+      final res = await PostService.toggleBookmark(widget.post.id);
+      if (!mounted) return;
+      setState(() => _bookmarked = res['active'] as bool? ?? _bookmarked);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _bookmarked = wasSaved);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo guardar: $e'),
+          backgroundColor: DevColors.destructive,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
-  void _toggleSave() {
-    setState(() => _saved = !_saved);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-            content: Text(_saved
-                ? 'Guardado en tu colección 📌'
-                : 'Eliminado de guardados')),
+  /// Repostea la publicación (`POST /posts/{id}/repost`).
+  Future<void> _repost() async {
+    if (_reposting) return;
+    setState(() => _reposting = true);
+    try {
+      await PostService.repost(widget.post.id);
+      if (!mounted) return;
+      setState(() => _reposted = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Repost publicado en tu perfil'),
+          backgroundColor: DevColors.consoleGreen,
+        ),
       );
+      widget.onReposted?.call();
+    } catch (e) {
+      if (!mounted) return;
+      final already = e.toString().contains('409');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            already
+                ? 'Ya habías reposteado esta publicación'
+                : 'No se pudo repostear: $e',
+          ),
+          backgroundColor: already ? DevColors.muted : DevColors.destructive,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _reposting = false);
+    }
+  }
+
+  void _openComments() {
+    showCommentsSheet(
+      context,
+      post: widget.post,
+      onCountChanged: (count) {
+        if (!mounted) return;
+        setState(() => _comments = count);
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final post = widget.post;
-    return LayoutBuilder(
-      builder: (context, cons) {
-        final origin = Offset(30, cons.maxHeight - 26);
-        return Stack(
-          children: [
-            Container(
-              decoration: DevTheme.glass(radius: 16).copyWith(
-                border: Border.all(
-                  color: _liked
-                      ? DevColors.likedRed.withValues(alpha: 0.35)
-                      : DevColors.border,
-                ),
-              ),
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _Header(
-                    post: post,
-                    following: _following,
-                    onFollow: () =>
-                        setState(() => _following = !_following),
-                  ),
-                  if (post.content.isNotEmpty)
-                    Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        post.content,
-                        style: DevTheme.body(size: 14, height: 1.45),
-                      ),
-                    ),
-                  if (post.type == PostType.stream) ...[
-                    const SizedBox(height: 10),
-                    const Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16),
-                      child: _LiveBadge(),
-                    ),
-                  ],
-                  if (post.media.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: GestureDetector(
-                          onDoubleTap: _doubleTapLike,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              _MediaGrid(media: post.media),
-                              AnimatedOpacity(
-                                opacity: _bigHeart ? 1 : 0,
-                                duration: const Duration(
-                                    milliseconds: 200),
-                                child: AnimatedScale(
-                                  scale: _bigHeart ? 1.15 : 0.6,
-                                  duration: const Duration(
-                                      milliseconds: 280),
-                                  curve: Curves.elasticOut,
-                                  child: Container(
-                                    padding:
-                                        const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black
-                                          .withValues(alpha: 0.35),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.favorite_rounded,
-                                      size: 56,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    // Doble-tap también sobre el texto para dar like.
-                    GestureDetector(
-                      onDoubleTap: _doubleTapLike,
-                      behavior: HitTestBehavior.translucent,
-                      child: const SizedBox(
-                          width: double.infinity, height: 6),
-                    ),
-                  ],
-                  if (post.type == PostType.beta &&
-                      post.beta != null) ...[
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12),
-                      child: _BetaSection(
-                        beta: post.beta!,
-                        onDownload: () {
-                          ScaffoldMessenger.of(context)
-                            ..hideCurrentSnackBar()
-                            ..showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    'Descargando ${post.beta!.title} ${post.beta!.version} 📥 (demo)'),
-                              ),
-                            );
-                        },
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  _Actions(
-                    liked: _liked,
-                    likes: _likes,
-                    comments: _commentsCount,
-                    shares: _shares,
-                    downloads: post.beta?.downloads,
-                    hasBeta: post.type == PostType.beta,
-                    saved: _saved,
-                    onLike: () =>
-                        _toggleLike(fromDoubleTap: false),
-                    onComment: _openComments,
-                    onShare: _openShare,
-                    onSave: _toggleSave,
-                    likePop: _pop,
-                  ),
-                ],
-              ),
-            ),
-            if (_burst)
-              Positioned.fill(
-                child: ConfettiBurst(
-                  key: ValueKey(_burstTick),
-                  tick: _burstTick,
-                  origin: origin,
-                  onDone: () =>
-                      setState(() => _burst = false),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
+    final compact = widget.compact;
+    final author = post.author;
+    final username = author?.username ?? 'devplayito';
 
-class _Header extends StatelessWidget {
-  final Post post;
-  final bool following;
-  final VoidCallback onFollow;
-  const _Header({
-    required this.post,
-    required this.following,
-    required this.onFollow,
-  });
+    // Cover: media propia o portada del juego adjunto.
+    final cover = post.media.isNotEmpty && post.media.first.url.isNotEmpty
+        ? post.media.first.url
+        : post.game?.coverUrl;
 
-  @override
-  Widget build(BuildContext context) {
-    final isDev = post.author.role == 'DEV';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isDev ? DevColors.gold : DevColors.border,
-                width: 2,
-              ),
-            ),
-            child: UserAvatar(
-                username: post.author.username,
-                avatar: post.author.avatar,
-                size: 38),
+    return Container(
+      decoration: BoxDecoration(
+        color: compact ? DevColors.cardRaised : DevColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DevColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(width: 10),
-          Expanded(
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Atribución: si es un repost, se muestra de quién es el original.
+          if (post.originalPost != null) _buildRepostAttribution(),
+          if (cover != null)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.network(
+                cover,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                errorBuilder: (_, _, _) => Container(
+                  color: DevColors.muted,
+                  child: Icon(
+                    Icons.image_rounded,
+                    color: DevColors.mutedFg,
+                    size: compact ? 28 : 36,
+                  ),
+                ),
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.all(compact ? 10 : 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        post.author.username,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: DevTheme.body(
-                            size: 14, w: FontWeight.w700),
-                      ),
+                _buildHeader(username, author),
+                const SizedBox(height: 10),
+                if (post.title.isNotEmpty)
+                  Text(
+                    post.title,
+                    style: DevTheme.body(
+                      size: compact ? 13 : 15,
+                      w: FontWeight.w700,
                     ),
-                    if (isDev) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [
-                            Color(0xFFE08A52),
-                            Color(0xFFB8502A)
-                          ]),
-                          borderRadius:
-                              BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'DEV',
-                          style: DevTheme.labelCaps(
-                              size: 8, color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  timeAgo(post.createdAt),
-                  style: DevTheme.body(
-                      size: 12, color: DevColors.mutedFg),
-                ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (post.content.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    post.content,
+                    style: DevTheme.bodySecondary(size: compact ? 11 : 12.5),
+                    maxLines: compact ? 2 : 4,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (post.tags.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: post.tags
+                        .take(4)
+                        .map((tag) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: DevColors.muted,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(color: DevColors.border),
+                              ),
+                              child: Text(
+                                '#$tag',
+                                style: DevTheme.body(
+                                  size: 10,
+                                  color: DevColors.mutedFg,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ],
+                if (post.type == PostType.poll) ...[
+                  const SizedBox(height: 10),
+                  PostPollView(postId: post.id, initialPoll: post.poll),
+                ],
+                const SizedBox(height: 12),
+                const Divider(color: DevColors.border, height: 1),
+                const SizedBox(height: 8),
+                _buildActions(compact),
               ],
             ),
-          ),
-          if (!isDev)
-            TextButton(
-              onPressed: onFollow,
-              style: TextButton.styleFrom(
-                minimumSize: Size.zero,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                backgroundColor: following
-                    ? DevColors.white08
-                    : DevColors.gold25,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  side: const BorderSide(
-                      color: DevColors.gold40),
-                ),
-              ),
-              child: Text(
-                following ? 'Siguiendo' : 'Seguir',
-                style: DevTheme.body(
-                  size: 11,
-                  w: FontWeight.w700,
-                  color: DevColors.goldSoft,
-                ),
-              ),
-            ),
-          IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content:
-                        Text('Opciones del post (demo) ⋯')),
-              );
-            },
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.more_horiz_rounded,
-                size: 20, color: DevColors.mutedFg),
           ),
         ],
       ),
     );
   }
+
+  /// Cabecera de un repost: "X ha republicado esto" con acceso al original.
+  Widget _buildRepostAttribution() {
+    final original = widget.post.originalPost!;
+    final author = original.author;
+    final username = author?.username ?? 'desconocido';
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        widget.compact ? 10 : 14,
+        widget.compact ? 8 : 12,
+        14,
+        0,
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.repeat_rounded, size: 15, color: DevColors.consoleGreen),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'Republicado de @$username',
+              style: DevTheme.bodySecondary(size: 11.5),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(String username, PostAuthor? author) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: widget.onProfileTap,
+          child: UserAvatar(username: username, avatar: author?.avatar, size: 36),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GestureDetector(
+            onTap: widget.onProfileTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  author?.fullName?.isNotEmpty == true
+                      ? author!.fullName!
+                      : username,
+                  style: DevTheme.body(size: 13, w: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '@$username · ${_timeAgo(widget.post.createdAt)}',
+                  style: DevTheme.bodySecondary(size: 10.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        _TypeBadge(type: widget.post.type),
+        PopupMenuButton<String>(
+          tooltip: 'Más opciones',
+          iconSize: 18,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          icon: const Icon(Icons.more_vert_rounded, color: DevColors.mutedFg),
+          onSelected: (value) {
+            if (value == 'report') {
+              showReportDialog(
+                context,
+                entityId: widget.post.id,
+                entityType: 'POST',
+                entityLabel: widget.post.content,
+              );
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: 'report',
+              child: Text('Reportar publicación'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActions(bool compact) {
+    return Row(
+      children: [
+        _ActionButton(
+          icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          color: _liked ? DevColors.likedRed : DevColors.mutedFg,
+          label: compactNumber(_likes),
+          onTap: _toggleLike,
+          animated: _liked,
+          scale: _likeScale,
+        ),
+        _ActionButton(
+          icon: Icons.mode_comment_outlined,
+          label: compactNumber(_comments),
+          onTap: _openComments,
+        ),
+        _ActionButton(
+          icon: _reposted
+              ? Icons.repeat_rounded
+              : Icons.repeat_on_rounded,
+          color: _reposted ? DevColors.consoleGreen : DevColors.mutedFg,
+          onTap: _reposting || _reposted ? null : _repost,
+        ),
+        _ActionButton(
+          icon: Icons.ios_share_rounded,
+          onTap: _share,
+        ),
+        if (widget.showSave) ...[
+          const Spacer(),
+          _ActionButton(
+            icon: _bookmarked
+                ? Icons.bookmark_rounded
+                : Icons.bookmark_border_rounded,
+            color: _bookmarked ? DevColors.gold : DevColors.mutedFg,
+            onTap: _saving ? null : _toggleSave,
+          ),
+        ],
+      ],
+    );
+  }
 }
 
-class _LiveBadge extends StatelessWidget {
-  const _LiveBadge();
+/// Botón de acción con icono y contador opcional.
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String? label;
+  final Color? color;
+  final VoidCallback? onTap;
+  final bool animated;
+  final Animation<double>? scale;
+
+  const _ActionButton({
+    required this.icon,
+    this.label,
+    this.color,
+    this.onTap,
+    this.animated = false,
+    this.scale,
+  });
 
   @override
   Widget build(BuildContext context) {
+    Widget iconWidget = Icon(icon, size: 18, color: color ?? DevColors.mutedFg);
+    if (animated && scale != null) {
+      iconWidget = ScaleTransition(scale: scale!, child: iconWidget);
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            iconWidget,
+            if (label != null) ...[
+              const SizedBox(width: 5),
+              Text(
+                label!,
+                style: DevTheme.bodySecondary(size: 11, color: color ?? DevColors.mutedFg),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Badge que indica el tipo de publicación.
+class _TypeBadge extends StatelessWidget {
+  final PostType type;
+
+  const _TypeBadge({required this.type});
+
+  static const _icons = {
+    PostType.game_showcase: Icons.sports_esports_rounded,
+    PostType.beta: Icons.science_rounded,
+    PostType.dev_log: Icons.code_rounded,
+    PostType.update: Icons.update_rounded,
+    PostType.stream: Icons.videocam_rounded,
+    PostType.poll: Icons.quiz_rounded,
+    PostType.announcement: Icons.campaign_rounded,
+    PostType.post: Icons.article_rounded,
+  };
+
+  static const _labels = {
+    PostType.game_showcase: 'Juego',
+    PostType.beta: 'Beta',
+    PostType.dev_log: 'DevLog',
+    PostType.update: 'Update',
+    PostType.stream: 'Stream',
+    PostType.poll: 'Encuesta',
+    PostType.announcement: 'Anuncio',
+    PostType.post: 'Post',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = type == PostType.dev_log || type == PostType.update
+        ? DevColors.gold
+        : DevColors.primary;
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: DevColors.destructive.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-            color: DevColors.destructive
-                .withValues(alpha: 0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: DevColors.destructive,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
+          Icon(_icons[type] ?? Icons.article_rounded, size: 12, color: color),
+          const SizedBox(width: 4),
           Text(
-            'EN VIVO · únete al stream',
-            style: DevTheme.body(
-                size: 11,
-                w: FontWeight.w700,
-                color: DevColors.destructive),
+            _labels[type] ?? 'Post',
+            style: DevTheme.labelCaps(size: 8, color: color),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _MediaGrid extends StatelessWidget {
-  final List<PostMedia> media;
-  const _MediaGrid({required this.media});
-
-  @override
-  Widget build(BuildContext context) {
-    final one = media.length == 1;
-    return SizedBox(
-      height: one ? 210 : 150,
-      width: double.infinity,
-      child: Row(
-        children: [
-          for (var i = 0; i < media.length; i++) ...[
-            if (i > 0) const SizedBox(width: 4),
-            Expanded(child: _MediaPlaceholder(media: media[i])),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MediaPlaceholder extends StatelessWidget {
-  final PostMedia media;
-  const _MediaPlaceholder({required this.media});
-
-  @override
-  Widget build(BuildContext context) {
-    final isVideo = media.kind == 'video';
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isVideo
-              ? const [Color(0xFF4A2330), Color(0xFF241610)]
-              : const [Color(0xFF5A4128), Color(0xFF2E1F15)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            size: Size.infinite,
-            painter: _GridPainter(color: DevColors.white08),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isVideo
-                    ? Icons.videocam_outlined
-                    : Icons.image_outlined,
-                size: 42,
-                color:
-                    DevColors.gold.withValues(alpha: 0.8),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                isVideo
-                    ? 'video · doble-tap = ❤'
-                    : 'imagen · doble-tap = ❤',
-                style: DevTheme.labelCaps(
-                    size: 9, color: DevColors.mutedFg),
-              ),
-            ],
-          ),
-          if (isVideo)
-            Container(
-              width: 48,
-              height: 32,
-              decoration: BoxDecoration(
-                color:
-                    Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(10),
-                border:
-                    Border.all(color: DevColors.white15),
-              ),
-              child: const Icon(Icons.play_arrow_rounded,
-                  color: Colors.white, size: 24),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GridPainter extends CustomPainter {
-  final Color color;
-  const _GridPainter({required this.color});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-    const step = 24.0;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(
-          Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(
-          Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _GridPainter old) =>
-      color != old.color;
-}
-
-class _BetaSection extends StatelessWidget {
-  final BetaInfo beta;
-  final VoidCallback onDownload;
-  const _BetaSection({required this.beta, required this.onDownload});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3A2617), Color(0xFF2E1F15)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: const Color(0x59DC7A44), width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              gradient: DevTheme.btnGradient(),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.sports_esports_rounded,
-                size: 26, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(beta.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: DevTheme.body(
-                              size: 14, w: FontWeight.w700)),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: DevColors.gold25,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                            color: DevColors.gold40),
-                      ),
-                      child: Text(
-                        beta.version,
-                        style: DevTheme.body(
-                            size: 11,
-                            w: FontWeight.w700,
-                            color: DevColors.goldSoft),
-                      ),
-                    ),
-                  ],
-                ),
-                if (beta.genre != null)
-                  Text(
-                    '${beta.genre} · ${compactNumber(beta.downloads)} descargas',
-                    style: DevTheme.body(
-                        size: 11,
-                        color: DevColors.mutedFg),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: onDownload,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DevColors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: Size.zero,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            icon: const Icon(Icons.download_rounded, size: 16),
-            label: Text('Beta',
-                style: DevTheme.body(
-                    size: 12,
-                    w: FontWeight.w700,
-                    color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Actions extends StatelessWidget {
-  final bool liked;
-  final int likes;
-  final int comments;
-  final int shares;
-  final int? downloads;
-  final bool hasBeta;
-  final bool saved;
-  final VoidCallback onLike;
-  final VoidCallback onComment;
-  final VoidCallback onShare;
-  final VoidCallback onSave;
-  final Animation<double> likePop;
-  const _Actions({
-    required this.liked,
-    required this.likes,
-    required this.comments,
-    required this.shares,
-    required this.downloads,
-    required this.hasBeta,
-    required this.saved,
-    required this.onLike,
-    required this.onComment,
-    required this.onShare,
-    required this.onSave,
-    required this.likePop,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: DevColors.border)),
-      ),
-      child: Row(
-        children: [
-          ScaleTransition(
-            scale: likePop,
-            child: _ActionButton(
-              icon: liked
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              active: liked,
-              activeColor: DevColors.likedRed,
-              label: compactNumber(likes),
-              onTap: onLike,
-            ),
-          ),
-          _ActionButton(
-            icon: Icons.mode_comment_outlined,
-            label: compactNumber(comments),
-            onTap: onComment,
-          ),
-          _ActionButton(
-            icon: Icons.share_outlined,
-            label: compactNumber(shares),
-            onTap: onShare,
-          ),
-          if (hasBeta && downloads != null)
-            Expanded(
-              child: _ActionButton(
-                icon: Icons.download_rounded,
-                label: compactNumber(downloads!),
-              ),
-            )
-          else
-            const Spacer(),
-          _ActionButton(
-            icon: saved
-                ? Icons.bookmark_rounded
-                : Icons.bookmark_border_rounded,
-            active: saved,
-            activeColor: DevColors.gold,
-            onTap: onSave,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String? label;
-  final bool active;
-  final Color activeColor;
-  final VoidCallback? onTap;
-  const _ActionButton({
-    required this.icon,
-    this.label,
-    this.active = false,
-    this.activeColor = DevColors.likedRed,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? activeColor : DevColors.mutedFg;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 10, vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, anim) => ScaleTransition(
-                scale: anim,
-                child: child,
-              ),
-              child: Icon(icon,
-                  key: ValueKey('${icon.codePoint}_$active'),
-                  size: 19,
-                  color: color),
-            ),
-            if (label != null) ...[
-              const SizedBox(width: 6),
-              Text(
-                label!,
-                style: DevTheme.body(
-                    size: 12, w: FontWeight.w600, color: color),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }
