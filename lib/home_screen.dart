@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/navigation.dart';
 import '../models/post.dart';
 import '../providers/auth_provider.dart';
+import '../screens/about_screen.dart';
 import '../screens/betas_screen.dart';
 import '../screens/chat_screen.dart';
 import '../screens/discover_screen.dart';
@@ -44,10 +46,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Keys para el Tour guiado
   final _heroKey = GlobalKey();
-  final _tickerKey = GlobalKey();
+  final _gamesKey = GlobalKey();
   final _feedKey = GlobalKey();
   final _createKey = GlobalKey();
   final _sidebarKey = GlobalKey();
+  final _headerKey = GlobalKey();
 
   @override
   void initState() {
@@ -417,119 +420,55 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showAbout() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: DevColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.sports_esports_rounded,
-                color: DevColors.cream,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text('DevPlay', style: DevTheme.display(size: 20)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Versión 1.0.0 MVP',
-              style: DevTheme.body(size: 14, w: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'La comunidad para devs indie y jugadores.',
-              style: DevTheme.body(size: 13, color: DevColors.mutedFg),
-            ),
-            const SizedBox(height: 16),
-            const Divider(color: DevColors.border),
-            const SizedBox(height: 8),
-            _AboutRow(
-              icon: Icons.code_rounded,
-              label: 'Frontend',
-              value: 'Flutter Web',
-            ),
-            _AboutRow(
-              icon: Icons.storage_rounded,
-              label: 'Backend',
-              value: 'FastAPI + PostgreSQL',
-            ),
-            _AboutRow(
-              icon: Icons.design_services_rounded,
-              label: 'Diseño',
-              value: 'Paleta cálida + Glassmorphism',
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Hecho con ❤️ para devs indie',
-              style: DevTheme.body(
-                size: 12,
-                color: DevColors.mutedFg,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cerrar',
-              style: DevTheme.body(color: DevColors.mutedFg),
-            ),
-          ),
-        ],
-      ),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const AboutScreen()));
   }
 
-  void _startTour() {
-    final steps = [
+  Future<void> _startTour() async {
+    // El tour explica la pantalla de Inicio. Si se lanza desde otra vista,
+    // primero volvemos a Inicio y esperamos a que se monte su contenido.
+    if (_currentView != ViewId.explore) {
+      setState(() => _currentView = ViewId.explore);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+
+    final isDesktop = MediaQuery.sizeOf(context).width >= _sidebarBreakpoint;
+    final steps = <TourStep>[
       TourStep(
         targetKey: _heroKey,
-        title: 'Hero Pixel-Art',
-        description: 'Acceso rápido a crear contenido y juegos destacados.',
+        title: 'Bienvenido a DevPlay',
+        description: 'Este es tu punto de partida: descubre la comunidad, crea contenido y encuentra nuevos proyectos indie.',
         icon: Icons.sports_esports_rounded,
       ),
       TourStep(
-        targetKey: _tickerKey,
-        title: 'Ticker de Juegos',
-        description: 'Juegos trending en scroll horizontal infinito.',
+        targetKey: _gamesKey,
+        title: 'Juegos que deberías conocer',
+        description: 'Aquí aparecen los proyectos y showcases publicados por la comunidad. Abre una tarjeta para ver sus detalles.',
         icon: Icons.videogame_asset_rounded,
       ),
       TourStep(
-        targetKey: _feedKey,
-        title: 'Feed Principal',
-        description: 'Posts, betas y streams de la comunidad.',
-        icon: Icons.feed_rounded,
-      ),
-      TourStep(
         targetKey: _createKey,
-        title: 'Botón Crear',
-        description: 'Publica posts, sube betas o crea encuestas.',
-        icon: Icons.add_rounded,
+        title: 'Publica en segundos',
+        description: 'Desde este cuadro puedes compartir un post, una imagen, un avance o una encuesta con la comunidad.',
+        icon: Icons.edit_note_rounded,
       ),
       TourStep(
-        targetKey: _sidebarKey,
-        title: 'Navegación',
-        description: 'Cambia entre Inicio, Betas, Chat, Tienda y más.',
+        targetKey: _feedKey,
+        title: 'Actividad de la comunidad',
+        description: 'El feed reúne publicaciones, betas y devlogs. Usa los botones de cada tarjeta para reaccionar, guardar o comentar.',
+        icon: Icons.forum_rounded,
+      ),
+      TourStep(
+        targetKey: isDesktop ? _sidebarKey : _headerKey,
+        title: isDesktop ? 'Navegación lateral' : 'Menú principal',
+        description: isDesktop
+            ? 'Cambia entre Inicio, Betas, Chat Mundial y Tienda. La sección de ayuda incluye este tour cuando quieras repetirlo.'
+            : 'Toca el menú para moverte entre Inicio, Betas, Chat Mundial y Tienda. También puedes repetir este tour desde Ayuda.',
         icon: Icons.menu_rounded,
       ),
     ];
+
     _TourOverlay(steps: steps).show(context);
   }
 
@@ -554,6 +493,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       // Sidebar fijo
                       DevSidebar(
+                        key: _sidebarKey,
                         currentView: _currentView,
                         onViewChanged: _onViewChanged,
                         onSettingsTap: _showAbout,
@@ -571,6 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           children: [
                             DevHeader(
+                              key: _headerKey,
                               unreadCount: _unread,
                               onNotificationsTap: _openNotifications,
                               onLogout: _logout,
@@ -588,6 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Column(
                     children: [
                       DevHeader(
+                        key: _headerKey,
                         unreadCount: _unread,
                         onNotificationsTap: _openNotifications,
                         onLogout: _logout,
@@ -655,6 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
             child: _HomeHero(
+              key: _heroKey,
               onCreatePost: _onCreatePost,
               onExplore: () => _onViewChanged(ViewId.discover),
             ),
@@ -670,6 +613,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // Header con icono y acción "Ver todos"
                 Row(
+                  key: _gamesKey,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(6),
@@ -804,6 +748,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Container(
+              key: _createKey,
               decoration: BoxDecoration(
                 color: DevColors.card,
                 borderRadius: BorderRadius.circular(16),
@@ -905,6 +850,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // Header con icono
                 Row(
+                  key: _feedKey,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(6),
@@ -1176,7 +1122,11 @@ class _HomeHero extends StatelessWidget {
   final VoidCallback onCreatePost;
   final VoidCallback onExplore;
 
-  const _HomeHero({required this.onCreatePost, required this.onExplore});
+  const _HomeHero({
+    super.key,
+    required this.onCreatePost,
+    required this.onExplore,
+  });
 
   static Widget _pixel(Color color, double size, double alpha) {
     return Container(
@@ -1582,35 +1532,6 @@ class _EmptyState extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Fila de detalle para el diálogo "Acerca de".
-class _AboutRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _AboutRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: DevColors.primary),
-          const SizedBox(width: 10),
-          Text(label, style: DevTheme.body(size: 13, color: DevColors.mutedFg)),
-          const Spacer(),
-          Text(value, style: DevTheme.body(size: 13, w: FontWeight.w600)),
-        ],
       ),
     );
   }
@@ -2102,8 +2023,8 @@ class TourStep {
   });
 }
 
-/// Overlay del tour guiado: resalta el widget objetivo (si está montado)
-/// y muestra una tarjeta con título/descripción y navegación.
+/// Overlay del tour guiado: oscurece el fondo, ilumina el objetivo y muestra
+/// una tarjeta contextual con navegación paso a paso.
 class _TourOverlay {
   final List<TourStep> steps;
 
@@ -2112,17 +2033,21 @@ class _TourOverlay {
   void show(BuildContext context) {
     showGeneralDialog(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Tour',
-      barrierColor: Colors.black.withValues(alpha: 0.78),
-      transitionDuration: const Duration(milliseconds: 180),
+      barrierDismissible: false,
+      barrierLabel: 'Tour guiado',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (_, __, ___) => _TourContent(steps: steps),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(opacity: animation, child: child);
+      },
     );
   }
 }
 
 class _TourContent extends StatefulWidget {
   final List<TourStep> steps;
+
   const _TourContent({required this.steps});
 
   @override
@@ -2131,188 +2056,350 @@ class _TourContent extends StatefulWidget {
 
 class _TourContentState extends State<_TourContent> {
   int _index = 0;
+  bool _moving = false;
+
+  TourStep get _step => widget.steps[_index];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusStep(0, animate: false);
+    });
+  }
 
   Rect? _targetRect() {
-    final ctx = widget.steps[_index].targetKey.currentContext;
+    final ctx = _step.targetKey.currentContext;
     if (ctx == null) return null;
     final box = ctx.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return null;
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
+  Future<void> _focusStep(int index, {bool animate = true}) async {
+    if (!mounted || index < 0 || index >= widget.steps.length) return;
+    setState(() {
+      _index = index;
+      _moving = true;
+    });
+
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+
+    final ctx = widget.steps[index].targetKey.currentContext;
+    if (ctx != null && ctx.mounted) {
+      await Scrollable.ensureVisible(
+        ctx,
+        duration: animate ? const Duration(milliseconds: 320) : Duration.zero,
+        curve: Curves.easeOutCubic,
+        alignment: 0.18,
+      );
+      if (!mounted) return;
+      await WidgetsBinding.instance.endOfFrame;
+    }
+
+    if (mounted) setState(() => _moving = false);
+  }
+
   void _next() {
     if (_index < widget.steps.length - 1) {
-      setState(() => _index++);
+      _focusStep(_index + 1);
     } else {
-      Navigator.of(context).maybePop();
+      _close();
     }
   }
 
   void _prev() {
-    if (_index > 0) setState(() => _index--);
+    if (_index > 0) _focusStep(_index - 1);
+  }
+
+  void _close() => Navigator.of(context).maybePop();
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowRight ||
+        key == LogicalKeyboardKey.space ||
+        key == LogicalKeyboardKey.enter) {
+      _next();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      _prev();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.escape) {
+      _close();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   @override
   Widget build(BuildContext context) {
-    final step = widget.steps[_index];
-    final rect = _targetRect();
-    final size = MediaQuery.of(context).size;
-
-    const cardWidth = 320.0;
-    double cardLeft = (size.width - cardWidth) / 2;
-    double cardTop = size.height / 2 - 80;
-
+    final step = _step;
+    final size = MediaQuery.sizeOf(context);
+    Rect? rect = _targetRect();
     if (rect != null) {
-      cardLeft = rect.left.clamp(
-        16.0,
-        (size.width - cardWidth - 16).clamp(16.0, size.width),
-      );
-      final below = rect.bottom + 16;
-      cardTop = below + 170 > size.height ? (rect.top - 186) : below;
-      if (cardTop < 16) cardTop = 16;
+      rect = rect.intersect(Offset.zero & size);
+      if (rect.width <= 1 || rect.height <= 1) rect = null;
     }
 
-    return Stack(
-      children: [
-        // Anillo resaltado alrededor del objetivo
-        if (rect != null)
-          Positioned(
-            left: rect.left - 6,
-            top: rect.top - 6,
+    final cardWidth = size.width < 560
+        ? (size.width - 32).clamp(280.0, 380.0).toDouble()
+        : 380.0;
+    final cardHeightHint = 270.0;
+
+    double cardTop;
+    if (rect == null) {
+      cardTop = (size.height - cardHeightHint) / 2;
+    } else if (rect.bottom + 16 + cardHeightHint <= size.height) {
+      cardTop = rect.bottom + 16;
+    } else if (rect.top - 16 - cardHeightHint >= 16) {
+      cardTop = rect.top - 16 - cardHeightHint;
+    } else {
+      cardTop = (size.height - cardHeightHint) / 2;
+    }
+    cardTop = cardTop.clamp(16.0, size.height - 16).toDouble();
+
+    double cardLeft = (size.width - cardWidth) / 2;
+    if (rect != null &&
+        rect.right + 16 + cardWidth <= size.width &&
+        rect.width < size.width * 0.45) {
+      cardLeft = rect.right + 16;
+    }
+    final availableHeight = (size.height - cardTop - 16)
+        .clamp(180.0, size.height)
+        .toDouble();
+
+    return Focus(
+      autofocus: true,
+      onKeyEvent: _handleKey,
+      child: Stack(
+        children: [
+          // Oscurece todo excepto la zona del objetivo (spotlight).
+          Positioned.fill(
             child: IgnorePointer(
-              child: Container(
-                width: rect.width + 12,
-                height: rect.height + 12,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: DevColors.gold, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: DevColors.gold.withValues(alpha: 0.35),
-                      blurRadius: 18,
+              child: CustomPaint(painter: _TourSpotlightPainter(target: rect)),
+            ),
+          ),
+
+          // Anillo con brillo alrededor del objetivo.
+          if (rect != null)
+            Positioned(
+              left: rect.left - 8,
+              top: rect.top - 8,
+              child: IgnorePointer(
+                child: Container(
+                  width: rect.width + 16,
+                  height: rect.height + 16,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: DevColors.gold, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: DevColors.gold.withValues(alpha: 0.35),
+                        blurRadius: 22,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Tarjeta contextual del paso actual.
+          Positioned(
+            left: cardLeft,
+            top: cardTop,
+            width: cardWidth,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: availableHeight),
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: DevColors.card,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: DevColors.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: DevColors.primary.withValues(
+                                  alpha: 0.15,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                step.icon,
+                                size: 20,
+                                color: DevColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'PASO ${_index + 1} DE ${widget.steps.length}',
+                                    style: DevTheme.labelCaps(
+                                      size: 9,
+                                      color: DevColors.gold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    step.title,
+                                    style: DevTheme.display(
+                                      size: 16,
+                                      w: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _close,
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                size: 20,
+                                color: DevColors.mutedFg,
+                              ),
+                              tooltip: 'Saltar tour',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: List.generate(widget.steps.length, (i) {
+                            final active = i == _index;
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: active ? 18 : 7,
+                              height: 7,
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                color: active
+                                    ? DevColors.gold
+                                    : DevColors.border,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          step.description,
+                          style: DevTheme.bodySecondary(size: 13),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Text(
+                              '${_index + 1} de ${widget.steps.length}',
+                              style: DevTheme.body(
+                                size: 11,
+                                color: DevColors.mutedFg,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (_index > 0)
+                              TextButton(
+                                onPressed: _moving ? null : _prev,
+                                child: Text(
+                                  'Anterior',
+                                  style: DevTheme.body(
+                                    size: 12.5,
+                                    color: DevColors.mutedFg,
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(width: 4),
+                            ElevatedButton(
+                              onPressed: _moving ? null : _next,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: DevColors.primary,
+                                foregroundColor: DevColors.primaryFg,
+                                disabledBackgroundColor: DevColors.muted,
+                                disabledForegroundColor: DevColors.mutedFg,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                _index < widget.steps.length - 1
+                                    ? 'Siguiente'
+                                    : 'Finalizar',
+                                style: DevTheme.body(
+                                  size: 12.5,
+                                  w: FontWeight.w600,
+                                  color: _moving
+                                      ? DevColors.mutedFg
+                                      : DevColors.primaryFg,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        // Tarjeta del paso
-        Positioned(
-          left: cardLeft,
-          top: cardTop,
-          width: cardWidth,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: DevColors.card,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: DevColors.border),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: DevColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          step.icon,
-                          size: 18,
-                          color: DevColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          step.title,
-                          style: DevTheme.display(size: 15, w: FontWeight.w700),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    step.description,
-                    style: DevTheme.bodySecondary(size: 13),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Text(
-                        '${_index + 1} / ${widget.steps.length}',
-                        style: DevTheme.body(
-                          size: 12,
-                          color: DevColors.mutedFg,
-                        ),
-                      ),
-                      const Spacer(),
-                      if (_index > 0)
-                        TextButton(
-                          onPressed: _prev,
-                          child: Text(
-                            'Atrás',
-                            style: DevTheme.body(
-                              size: 13,
-                              color: DevColors.mutedFg,
-                            ),
-                          ),
-                        ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        child: Text(
-                          'Saltar',
-                          style: DevTheme.body(
-                            size: 13,
-                            color: DevColors.mutedFg,
-                          ),
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: _next,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: DevColors.primary,
-                          foregroundColor: DevColors.primaryFg,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Text(
-                          _index < widget.steps.length - 1
-                              ? 'Siguiente'
-                              : 'Listo',
-                          style: DevTheme.body(
-                            size: 13,
-                            w: FontWeight.w600,
-                            color: DevColors.primaryFg,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
+  }
+}
+
+class _TourSpotlightPainter extends CustomPainter {
+  final Rect? target;
+
+  const _TourSpotlightPainter({required this.target});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final full = Path()..addRect(Offset.zero & size);
+    final dimPaint = Paint()..color = Colors.black.withValues(alpha: 0.78);
+
+    if (target == null) {
+      canvas.drawRect(Offset.zero & size, dimPaint);
+      return;
+    }
+
+    final hole = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(target!.inflate(8), const Radius.circular(16)),
+      );
+    final spotlight = Path.combine(PathOperation.difference, full, hole);
+    canvas.drawPath(spotlight, dimPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TourSpotlightPainter oldDelegate) {
+    return oldDelegate.target != target;
   }
 }
