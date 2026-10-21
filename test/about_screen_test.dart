@@ -19,6 +19,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Acerca de DevPlay'), findsOneWidget);
+      expect(find.text('Flutter Web'), findsNothing);
+      expect(find.text('FastAPI + PostgreSQL'), findsNothing);
+      expect(find.text('v1.0.0 MVP'), findsNothing);
       expect(find.text('Términos y condiciones'), findsOneWidget);
       expect(find.text('Política de privacidad'), findsOneWidget);
       expect(find.text('Normas de la comunidad'), findsOneWidget);

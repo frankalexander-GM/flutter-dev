@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -2184,7 +2186,7 @@ class _TourContentState extends State<_TourContent> {
             ),
           ),
 
-          // Anillo con brillo alrededor del objetivo.
+          // Borde tipo cristal alrededor del objetivo (sin tinte amarillo).
           if (rect != null)
             Positioned(
               left: rect.left - 8,
@@ -2195,13 +2197,10 @@ class _TourContentState extends State<_TourContent> {
                   height: rect.height + 16,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: DevColors.gold, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: DevColors.gold.withValues(alpha: 0.35),
-                        blurRadius: 22,
-                      ),
-                    ],
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.62),
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -2214,155 +2213,176 @@ class _TourContentState extends State<_TourContent> {
             width: cardWidth,
             child: ConstrainedBox(
               constraints: BoxConstraints(maxHeight: availableHeight),
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: DevColors.card,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: DevColors.border),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: DevColors.primary.withValues(
-                                  alpha: 0.15,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                step.icon,
-                                size: 20,
-                                color: DevColors.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: DevColors.card.withValues(alpha: 0.74),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.13),
+                          ),
+                        ),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'PASO ${_index + 1} DE ${widget.steps.length}',
-                                    style: DevTheme.labelCaps(
-                                      size: 9,
-                                      color: DevColors.gold,
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: DevColors.primary.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      step.icon,
+                                      size: 20,
+                                      color: DevColors.primary,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'PASO ${_index + 1} DE ${widget.steps.length}',
+                                          style: DevTheme.labelCaps(
+                                            size: 9,
+                                            color: DevColors.cream.withValues(
+                                              alpha: 0.78,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          step.title,
+                                          style: DevTheme.display(
+                                            size: 16,
+                                            w: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _close,
+                                    icon: const Icon(
+                                      Icons.close_rounded,
+                                      size: 20,
+                                      color: DevColors.mutedFg,
+                                    ),
+                                    tooltip: 'Saltar tour',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: List.generate(widget.steps.length, (
+                                  i,
+                                ) {
+                                  final active = i == _index;
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    width: active ? 18 : 7,
+                                    height: 7,
+                                    margin: const EdgeInsets.only(right: 6),
+                                    decoration: BoxDecoration(
+                                      color: active
+                                          ? DevColors.cream
+                                          : Colors.white.withValues(
+                                              alpha: 0.18,
+                                            ),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                  );
+                                }),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                step.description,
+                                style: DevTheme.bodySecondary(size: 13),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
                                   Text(
-                                    step.title,
-                                    style: DevTheme.display(
-                                      size: 16,
-                                      w: FontWeight.w700,
+                                    '${_index + 1} de ${widget.steps.length}',
+                                    style: DevTheme.body(
+                                      size: 11,
+                                      color: DevColors.mutedFg,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  if (_index > 0)
+                                    TextButton(
+                                      onPressed: _moving ? null : _prev,
+                                      child: Text(
+                                        'Anterior',
+                                        style: DevTheme.body(
+                                          size: 12.5,
+                                          color: DevColors.mutedFg,
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(width: 4),
+                                  ElevatedButton(
+                                    onPressed: _moving ? null : _next,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: DevColors.primary,
+                                      foregroundColor: DevColors.primaryFg,
+                                      disabledBackgroundColor: DevColors.muted,
+                                      disabledForegroundColor:
+                                          DevColors.mutedFg,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _index < widget.steps.length - 1
+                                          ? 'Siguiente'
+                                          : 'Finalizar',
+                                      style: DevTheme.body(
+                                        size: 12.5,
+                                        w: FontWeight.w600,
+                                        color: _moving
+                                            ? DevColors.mutedFg
+                                            : DevColors.primaryFg,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            IconButton(
-                              onPressed: _close,
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                size: 20,
-                                color: DevColors.mutedFg,
-                              ),
-                              tooltip: 'Saltar tour',
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: List.generate(widget.steps.length, (i) {
-                            final active = i == _index;
-                            return AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              width: active ? 18 : 7,
-                              height: 7,
-                              margin: const EdgeInsets.only(right: 6),
-                              decoration: BoxDecoration(
-                                color: active
-                                    ? DevColors.gold
-                                    : DevColors.border,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            );
-                          }),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          step.description,
-                          style: DevTheme.bodySecondary(size: 13),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Text(
-                              '${_index + 1} de ${widget.steps.length}',
-                              style: DevTheme.body(
-                                size: 11,
-                                color: DevColors.mutedFg,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (_index > 0)
-                              TextButton(
-                                onPressed: _moving ? null : _prev,
-                                child: Text(
-                                  'Anterior',
-                                  style: DevTheme.body(
-                                    size: 12.5,
-                                    color: DevColors.mutedFg,
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(width: 4),
-                            ElevatedButton(
-                              onPressed: _moving ? null : _next,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: DevColors.primary,
-                                foregroundColor: DevColors.primaryFg,
-                                disabledBackgroundColor: DevColors.muted,
-                                disabledForegroundColor: DevColors.mutedFg,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: Text(
-                                _index < widget.steps.length - 1
-                                    ? 'Siguiente'
-                                    : 'Finalizar',
-                                style: DevTheme.body(
-                                  size: 12.5,
-                                  w: FontWeight.w600,
-                                  color: _moving
-                                      ? DevColors.mutedFg
-                                      : DevColors.primaryFg,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -2383,7 +2403,7 @@ class _TourSpotlightPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final full = Path()..addRect(Offset.zero & size);
-    final dimPaint = Paint()..color = Colors.black.withValues(alpha: 0.78);
+    final dimPaint = Paint()..color = Colors.black.withValues(alpha: 0.70);
 
     if (target == null) {
       canvas.drawRect(Offset.zero & size, dimPaint);

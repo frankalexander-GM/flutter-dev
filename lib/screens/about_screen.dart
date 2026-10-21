@@ -65,6 +65,7 @@ class AboutScreen extends StatelessWidget {
           paragraphs: [
             'La marca, el diseño, los textos propios y el código de DevPlay pertenecen a sus respectivos titulares. No puedes copiarlos, redistribuirlos ni utilizarlos para crear un servicio confundible sin autorización.',
             'Las marcas, capturas y materiales de terceros pertenecen a sus propietarios y se muestran con fines informativos o bajo el permiso de quien los publica.',
+            'Si consideras que un contenido infringe tus derechos, envía una notificación por los canales oficiales con la identificación de la obra, la URL del contenido, tus datos de contacto y una declaración de buena fe. Podemos retirar el contenido mientras revisamos el caso y tomar medidas contra las cuentas reincidentes.',
           ],
         ),
         _LegalSection(
@@ -75,7 +76,33 @@ class AboutScreen extends StatelessWidget {
           ],
         ),
         _LegalSection(
-          heading: '9. Cambios',
+          heading: '9. Naturaleza y gratuidad del servicio',
+          paragraphs: [
+            'DevPlay es gratuito en su fase MVP. No se procesan pagos ni suscripciones dentro de la aplicación. Si en el futuro se añaden funciones de pago, se informará antes de contratarlas y se mostrarán sus condiciones y precios.',
+          ],
+        ),
+        _LegalSection(
+          heading: '10. Edad mínima y capacidad',
+          paragraphs: [
+            'DevPlay no está dirigido a menores de 13 años. Si la ley de tu país exige una edad superior para usar servicios digitales o consentir el tratamiento de tus datos, debes cumplirla.',
+            'Si eres menor de edad, utiliza la plataforma con la autorización y supervisión de tu tutor legal.',
+          ],
+        ),
+        _LegalSection(
+          heading: '11. Ley aplicable y resolución de conflictos',
+          paragraphs: [
+            'Estos términos se rigen por las leyes del país donde el operador de DevPlay tenga su domicilio principal, sin perjuicio de las normas imperativas de protección al consumidor o de protección de datos que resulten aplicables en tu país de residencia.',
+            'Antes de acudir a los tribunales, intenta resolver la disputa de buena fe a través de los canales oficiales. Los tribunales competentes serán los que determine la ley aplicable.',
+          ],
+        ),
+        _LegalSection(
+          heading: '12. Contacto y notificaciones',
+          paragraphs: [
+            'Las consultas legales, notificaciones de infracción y solicitudes relacionadas con estos términos pueden enviarse a través de los canales oficiales del proyecto. También podemos publicar avisos en la aplicación o en esta pantalla.',
+          ],
+        ),
+        _LegalSection(
+          heading: '13. Cambios',
           paragraphs: [
             'Podemos actualizar estos términos para reflejar cambios en el servicio o en la normativa. La versión vigente será la publicada en esta pantalla. El uso continuado después de una actualización implica su aceptación.',
           ],
@@ -100,6 +127,7 @@ class AboutScreen extends StatelessWidget {
             'Contenido e interacciones: publicaciones, comentarios, mensajes, betas, encuestas, likes, guardados y reportes.',
             'Datos técnicos necesarios: identificadores de sesión, dirección IP, registros de seguridad y datos básicos del navegador o dispositivo.',
             'Preferencias: ajustes de la interfaz y estado del tour guiado guardados en el almacenamiento local del navegador.',
+            'No solicitamos datos sensibles (salud, ideología, origen étnico, datos biométricos). Evita publicarlos en tu perfil o en tus contenidos.',
           ],
         ),
         _LegalSection(
@@ -139,23 +167,44 @@ class AboutScreen extends StatelessWidget {
           ],
         ),
         _LegalSection(
-          heading: '8. Tus opciones',
+          heading: '8. Tus derechos y opciones',
           bullets: [
             'Puedes actualizar los datos de tu perfil desde la configuración de la cuenta.',
             'Puedes eliminar publicaciones y comentarios propios cuando la interfaz lo permita.',
-            'Puedes solicitar información o plantear una duda sobre privacidad a través de los canales oficiales del proyecto.',
+            'Puedes solicitar acceso, rectificación, actualización, eliminación, limitación u oposición al tratamiento, y retirar tu consentimiento cuando la ley lo permita.',
+            'Puedes solicitar la portabilidad de los datos que hayas proporcionado, cuando resulte aplicable.',
+            'Puedes presentar una reclamación ante la autoridad de protección de datos competente en tu país.',
           ],
         ),
         _LegalSection(
           heading: '9. Menores',
           paragraphs: [
-            'DevPlay no está dirigido a menores que no tengan la edad legal para consentir el tratamiento de sus datos. Si eres menor, utiliza la plataforma con la supervisión de tu tutor legal.',
+            'DevPlay no está dirigido a menores de 13 años. Si la ley de tu país exige una edad superior para consentir el tratamiento de datos, debes cumplirla. Si eres menor, utiliza la plataforma con la autorización y supervisión de tu tutor legal.',
           ],
         ),
         _LegalSection(
           heading: '10. Cambios',
           paragraphs: [
             'Podemos actualizar esta política cuando cambie el tratamiento de datos o la normativa aplicable. Publicaremos la versión vigente en esta pantalla.',
+          ],
+        ),
+        _LegalSection(
+          heading: '11. Base legal del tratamiento',
+          paragraphs: [
+            'Tratamos los datos para ejecutar el servicio que solicitas (cuenta, publicaciones, chat), con tu consentimiento cuando corresponda, por interés legítimo en mantener la seguridad y prevenir abusos, y para cumplir obligaciones legales.',
+            'Puedes retirar tu consentimiento en cualquier momento, sin que ello afecte a la licitud del tratamiento realizado antes de la retirada.',
+          ],
+        ),
+        _LegalSection(
+          heading: '12. Transferencias internacionales',
+          paragraphs: [
+            'La infraestructura y los proveedores tecnológicos pueden estar ubicados en un país distinto al tuyo. Cuando se realicen transferencias internacionales de datos, aplicaremos salvaguardas razonables y las garantías que exija la normativa aplicable.',
+          ],
+        ),
+        _LegalSection(
+          heading: '13. Contacto y autoridad de control',
+          paragraphs: [
+            'Para ejercer tus derechos o resolver dudas sobre privacidad, usa los canales oficiales del proyecto. También puedes presentar una reclamación ante la autoridad de protección de datos competente de tu país.',
           ],
         ),
       ],
@@ -214,6 +263,13 @@ class AboutScreen extends StatelessWidget {
             'Si crees que una decisión fue incorrecta, puedes explicar tu caso por los canales oficiales del proyecto. Revisaremos la situación y responderemos cuando sea posible.',
           ],
         ),
+        _LegalSection(
+          heading: '8. Cumplimiento legal y cooperación',
+          paragraphs: [
+            'Estas normas se aplican junto con los Términos y condiciones y la legislación aplicable. Podemos conservar y compartir información con autoridades competentes cuando exista una obligación legal o un riesgo grave para la seguridad de las personas.',
+            'El incumplimiento de estas normas puede dar lugar a medidas dentro de la plataforma y, cuando corresponda, a las acciones legales que permita la ley.',
+          ],
+        ),
       ],
     ),
     _LegalDoc(
@@ -258,9 +314,17 @@ class AboutScreen extends StatelessWidget {
           ],
         ),
         _LegalSection(
-          heading: '7. Cambios',
+          heading: '7. Consentimiento y control',
+          paragraphs: [
+            'Las cookies estrictamente necesarias para la sesión y la seguridad pueden utilizarse sin consentimiento cuando la ley lo permita. Cualquier cookie no esencial se activará solo con tu consentimiento.',
+            'Puedes cambiar tus preferencias o revocar el consentimiento desde la configuración del navegador o los mecanismos que habilite la aplicación.',
+          ],
+        ),
+        _LegalSection(
+          heading: '8. Cambios y contacto',
           paragraphs: [
             'Si cambiamos el uso de cookies o almacenamiento local, actualizaremos esta información y, cuando sea necesario, solicitaremos tu consentimiento.',
+            'Para dudas sobre cookies o privacidad, usa los canales oficiales del proyecto.',
           ],
         ),
       ],
@@ -295,8 +359,6 @@ class AboutScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHero(),
-                const SizedBox(height: 20),
-                _buildInfoCard(),
                 const SizedBox(height: 26),
                 Text(
                   'Legal y comunidad',
@@ -405,45 +467,6 @@ class AboutScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: const [
-              _Pill(label: 'v1.0.0 MVP', icon: Icons.rocket_launch_rounded),
-              _Pill(label: 'Flutter Web', icon: Icons.code_rounded),
-              _Pill(label: 'FastAPI + PostgreSQL', icon: Icons.storage_rounded),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: DevTheme.glass(radius: 16),
-      child: Column(
-        children: const [
-          _AboutRow(
-            icon: Icons.design_services_rounded,
-            label: 'Diseño',
-            value: 'Paleta cálida + glassmorphism',
-          ),
-          Divider(color: DevColors.border, height: 20),
-          _AboutRow(
-            icon: Icons.groups_rounded,
-            label: 'Comunidad',
-            value: 'Creadores, betas y jugadores',
-          ),
-          Divider(color: DevColors.border, height: 20),
-          _AboutRow(
-            icon: Icons.shield_outlined,
-            label: 'Seguridad',
-            value: 'Reportes y moderación comunitaria',
-          ),
         ],
       ),
     );
@@ -463,13 +486,18 @@ class AboutScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'DevPlay está en fase MVP. Estos documentos son informativos y pueden actualizarse. '
-          'No sustituyen asesoría legal profesional.',
+          'DevPlay está en fase MVP. Esta documentación legal se actualiza junto con el servicio '
+          'y no sustituye asesoría legal profesional.',
           style: DevTheme.bodySecondary(size: 11),
         ),
         const SizedBox(height: 4),
         Text(
-          'Última actualización: $_updated',
+          'Contacto legal: canales oficiales del proyecto.',
+          style: DevTheme.bodySecondary(size: 11),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Versión legal 1.0 · Vigente desde $_updated',
           style: DevTheme.bodySecondary(size: 11),
         ),
       ],
@@ -750,64 +778,6 @@ class _LegalTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AboutRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _AboutRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 17, color: DevColors.primary),
-        const SizedBox(width: 10),
-        Text(label, style: DevTheme.body(size: 12.5, color: DevColors.mutedFg)),
-        const Spacer(),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: DevTheme.body(size: 12.5, w: FontWeight.w600),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  final String label;
-  final IconData icon;
-
-  const _Pill({required this.label, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: DevColors.muted.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: DevColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: DevColors.gold),
-          const SizedBox(width: 6),
-          Text(label, style: DevTheme.body(size: 11, color: DevColors.mutedFg)),
-        ],
       ),
     );
   }
