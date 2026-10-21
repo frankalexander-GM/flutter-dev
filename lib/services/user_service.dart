@@ -43,15 +43,18 @@ class UserService {
     String? website,
     String? profession,
   }) async {
-    final data = await ApiService.patchJson('/users/me/profile', body: {
-      'fullName': ?fullName,
-      'bio': ?bio,
-      'avatar': ?avatar,
-      'banner': ?banner,
-      'location': ?location,
-      'website': ?website,
-      'profession': ?profession,
-    });
+    final data = await ApiService.patchJson(
+      '/users/me/profile',
+      body: {
+        'fullName': ?fullName,
+        'bio': ?bio,
+        'avatar': ?avatar,
+        'banner': ?banner,
+        'location': ?location,
+        'website': ?website,
+        'profession': ?profession,
+      },
+    );
     return UserMe.fromJson(data as Map<String, dynamic>);
   }
 
@@ -67,8 +70,10 @@ class UserService {
 
   /// `GET /users/by-username/{username}` → id mínimo o null si no existe.
   static Future<String?> getUserIdByUsername(String username) async {
-    final data =
-        await ApiService.getJson('/users/by-username/$username', auth: false);
+    final data = await ApiService.getJson(
+      '/users/by-username/$username',
+      auth: false,
+    );
     final user = data['user'] as Map<String, dynamic>?;
     return user?['id'] as String?;
   }
@@ -80,8 +85,9 @@ class UserService {
     int skip = 0,
     int limit = 20,
   }) async {
-    final data =
-        await ApiService.getJson('/notifications?skip=$skip&limit=$limit');
+    final data = await ApiService.getJson(
+      '/notifications?skip=$skip&limit=$limit',
+    );
     return NotificationPage.fromJson(data as Map<String, dynamic>);
   }
 
@@ -107,7 +113,10 @@ class UserService {
 
   /// `POST /follow {followeeId}` → `{following}` (idempotente).
   static Future<bool> follow(String userId) async {
-    final data = await ApiService.postJson('/follow', body: {'followeeId': userId});
+    final data = await ApiService.postJson(
+      '/follow',
+      body: {'followeeId': userId},
+    );
     return data['following'] as bool? ?? false;
   }
 
@@ -119,7 +128,10 @@ class UserService {
 
   /// `GET /users/{id}/followers` → `{total, followers}`.
   static Future<List<FollowUser>> getFollowers(String userId) async {
-    final data = await ApiService.getJson('/users/$userId/followers', auth: false);
+    final data = await ApiService.getJson(
+      '/users/$userId/followers',
+      auth: false,
+    );
     return (data['followers'] as List)
         .map((e) => FollowUser.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -127,7 +139,10 @@ class UserService {
 
   /// `GET /users/{id}/following` → `{total, following}`.
   static Future<List<FollowUser>> getFollowing(String userId) async {
-    final data = await ApiService.getJson('/users/$userId/following', auth: false);
+    final data = await ApiService.getJson(
+      '/users/$userId/following',
+      auth: false,
+    );
     return (data['following'] as List)
         .map((e) => FollowUser.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -139,13 +154,5 @@ class UserService {
   static Future<BookmarkListResponse> getMyBookmarks() async {
     final data = await ApiService.getJson('/users/me/bookmarks');
     return BookmarkListResponse.fromJson(data as Map<String, dynamic>);
-  }
-
-  // ---------------------------- Logros / Achievements --------------------------
-
-  /// `GET /users/me/achievements` → `{achievements: [Achievement]}`.
-  static Future<AchievementsResponse> getMyAchievements() async {
-    final data = await ApiService.getJson('/users/me/achievements');
-    return AchievementsResponse.fromJson(data as Map<String, dynamic>);
   }
 }

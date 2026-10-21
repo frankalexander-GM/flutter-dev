@@ -10,22 +10,23 @@ import '../widgets/avatar.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/post_card.dart';
 
-/// Perfil público con pestañas: Publicaciones, Betas, Guardados, Logros.
+/// Perfil público con pestañas: Publicaciones, Betas y Guardados.
 class ProfileScreen extends StatefulWidget {
   final String userId;
+  final int initialTab;
 
-  const ProfileScreen({super.key, required this.userId});
+  const ProfileScreen({super.key, required this.userId, this.initialTab = 0});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   ProfileUser? _profile;
   List<Post> _posts = [];
   List<Post> _bookmarks = [];
-  AchievementsResponse? _achievements;
   bool _isLoading = true;
   String? _error;
   int _currentTab = 0;
@@ -34,13 +35,18 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     ('Publicaciones', Icons.article_rounded),
     ('Betas', Icons.sports_esports_rounded),
     ('Guardados', Icons.bookmark_rounded),
-    ('Logros', Icons.emoji_events_rounded),
   ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    final initialTab = widget.initialTab.clamp(0, _tabs.length - 1).toInt();
+    _currentTab = initialTab;
+    _tabController = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: initialTab,
+    );
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         setState(() => _currentTab = _tabController.index);
@@ -48,6 +54,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       }
     });
     _load();
+    if (initialTab == 2) {
+      _loadTabData();
+    }
   }
 
   @override
@@ -77,17 +86,15 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final isOwnProfile = auth.user?.id == widget.userId;
 
     // Solo cargar datos privados si es el propio perfil
-    if (!isOwnProfile && (_currentTab == 2 || _currentTab == 3)) {
+    if (!isOwnProfile && _currentTab == 2) {
       return;
     }
 
     try {
-      if (_currentTab == 2) { // Guardados
+      if (_currentTab == 2) {
+        // Guardados
         final bookmarks = await UserService.getMyBookmarks();
         setState(() => _bookmarks = bookmarks.posts);
-      } else if (_currentTab == 3) { // Logros
-        final achievements = await UserService.getMyAchievements();
-        setState(() => _achievements = achievements);
       }
     } catch (e) {
       // Silencioso, mantener datos previos
@@ -95,9 +102,11 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }
 
   List<Post> get _filteredPosts {
-    if (_currentTab == 1) { // Betas
+    if (_currentTab == 1) {
+      // Betas
       return _posts.where((p) => p.type == PostType.beta).toList();
-    } else if (_currentTab == 2) { // Guardados
+    } else if (_currentTab == 2) {
+      // Guardados
       return _bookmarks;
     }
     return _posts; // Publicaciones (todo)
@@ -120,12 +129,17 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           labelColor: DevColors.gold,
           unselectedLabelColor: DevColors.mutedFg,
           labelStyle: DevTheme.body(size: 13, w: FontWeight.w600),
-          tabs: _tabs.map((t) => Tab(icon: Icon(t.$2, size: 20), text: t.$1)).toList(),
+          tabs: _tabs
+              .map((t) => Tab(icon: Icon(t.$2, size: 20), text: t.$1))
+              .toList(),
         ),
         actions: [
           if (isOwnProfile)
             IconButton(
-              icon: const Icon(Icons.settings_rounded, color: DevColors.foreground),
+              icon: const Icon(
+                Icons.settings_rounded,
+                color: DevColors.foreground,
+              ),
               onPressed: () => _showSettingsDialog(),
             ),
         ],
@@ -133,10 +147,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _errorState()
-              : _profile == null
-                  ? const Center(child: Text('No se encontró el perfil'))
-                  : _buildBody(isOwnProfile),
+          ? _errorState()
+          : _profile == null
+          ? const Center(child: Text('No se encontró el perfil'))
+          : _buildBody(isOwnProfile),
     );
   }
 
@@ -147,11 +161,19 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off_rounded, size: 48, color: DevColors.mutedFg),
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 48,
+              color: DevColors.mutedFg,
+            ),
             const SizedBox(height: 16),
             Text('Error cargando perfil', style: DevTheme.display(size: 16)),
             const SizedBox(height: 8),
-            Text(_error!, style: DevTheme.body(size: 13, color: DevColors.destructive), textAlign: TextAlign.center),
+            Text(
+              _error!,
+              style: DevTheme.body(size: 13, color: DevColors.destructive),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
           ],
@@ -173,16 +195,28 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                UserAvatar(username: profile.username, avatar: profile.avatar, size: 80),
+                UserAvatar(
+                  username: profile.username,
+                  avatar: profile.avatar,
+                  size: 80,
+                ),
                 const SizedBox(height: 16),
                 Text(profile.username, style: DevTheme.display(size: 22)),
-                if (profile.fullName != null && profile.fullName!.isNotEmpty) ...[
+                if (profile.fullName != null &&
+                    profile.fullName!.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(profile.fullName!, style: DevTheme.body(size: 14, color: DevColors.mutedFg)),
+                  Text(
+                    profile.fullName!,
+                    style: DevTheme.body(size: 14, color: DevColors.mutedFg),
+                  ),
                 ],
                 if (profile.bio != null && profile.bio!.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Text(profile.bio!, style: DevTheme.body(size: 14), textAlign: TextAlign.center),
+                  Text(
+                    profile.bio!,
+                    style: DevTheme.body(size: 14),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
                 const SizedBox(height: 20),
                 Row(
@@ -215,15 +249,28 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)]),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFD9A441), Color(0xFFB8862E)],
+        ),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.monetization_on_rounded, color: Colors.white, size: 18),
+          const Icon(
+            Icons.monetization_on_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
           const SizedBox(width: 6),
-          Text('$devCoins DevCoins', style: DevTheme.body(size: 13, w: FontWeight.w700, color: Colors.white)),
+          Text(
+            '$devCoins DevCoins',
+            style: DevTheme.body(
+              size: 13,
+              w: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
         ],
       ),
     );
@@ -236,8 +283,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         return _buildPostsTab();
       case 2: // Guardados
         return _buildBookmarksTab();
-      case 3: // Logros
-        return _buildAchievementsTab();
       default:
         return _buildPostsTab();
     }
@@ -260,12 +305,24 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(_currentTab == 0 ? Icons.article_outlined : Icons.sports_esports_outlined, size: 48, color: DevColors.muted),
+                Icon(
+                  _currentTab == 0
+                      ? Icons.article_outlined
+                      : Icons.sports_esports_outlined,
+                  size: 48,
+                  color: DevColors.muted,
+                ),
                 const SizedBox(height: 12),
-                Text('Sin ${_currentTab == 0 ? 'publicaciones' : 'betas'} aún', style: DevTheme.body(color: DevColors.mutedFg)),
+                Text(
+                  'Sin ${_currentTab == 0 ? 'publicaciones' : 'betas'} aún',
+                  style: DevTheme.body(color: DevColors.mutedFg),
+                ),
                 if (_currentTab == 1) ...[
                   const SizedBox(height: 8),
-                  Text('Sube tu primera beta desde "Crear"', style: DevTheme.body(size: 12, color: DevColors.mutedFg)),
+                  Text(
+                    'Sube tu primera beta desde "Crear"',
+                    style: DevTheme.body(size: 12, color: DevColors.mutedFg),
+                  ),
                 ],
               ],
             ),
@@ -279,7 +336,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       }
     }
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: children);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
   }
 
   Widget _buildBookmarksTab() {
@@ -293,9 +353,16 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.lock_outline_rounded, size: 48, color: DevColors.muted),
+              const Icon(
+                Icons.lock_outline_rounded,
+                size: 48,
+                color: DevColors.muted,
+              ),
               const SizedBox(height: 12),
-              Text('Solo tú puedes ver tus guardados', style: DevTheme.body(color: DevColors.mutedFg)),
+              Text(
+                'Solo tú puedes ver tus guardados',
+                style: DevTheme.body(color: DevColors.mutedFg),
+              ),
             ],
           ),
         ),
@@ -315,11 +382,21 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.bookmark_outline_rounded, size: 48, color: DevColors.muted),
+                const Icon(
+                  Icons.bookmark_outline_rounded,
+                  size: 48,
+                  color: DevColors.muted,
+                ),
                 const SizedBox(height: 12),
-                Text('Sin posts guardados', style: DevTheme.body(color: DevColors.mutedFg)),
+                Text(
+                  'Sin posts guardados',
+                  style: DevTheme.body(color: DevColors.mutedFg),
+                ),
                 const SizedBox(height: 8),
-                Text('Marca posts con el icono de bandera', style: DevTheme.body(size: 12, color: DevColors.mutedFg)),
+                Text(
+                  'Marca posts con el icono de bandera',
+                  style: DevTheme.body(size: 12, color: DevColors.mutedFg),
+                ),
               ],
             ),
           ),
@@ -332,72 +409,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       }
     }
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: children);
-  }
-
-  Widget _buildAchievementsTab() {
-    final auth = context.read<AuthProvider>();
-    final isOwnProfile = auth.user?.id == widget.userId;
-
-    if (!isOwnProfile) {
-      return GlassCard(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.lock_outline_rounded, size: 48, color: DevColors.muted),
-              const SizedBox(height: 12),
-              Text('Solo tú puedes ver tus logros', style: DevTheme.body(color: DevColors.mutedFg)),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final achievements = _achievements?.achievements ?? [];
-
-    final children = <Widget>[
-      Text('Logros', style: DevTheme.display(size: 16)),
-      const SizedBox(height: 8),
-    ];
-
-    if (achievements.isEmpty) {
-      children.add(
-        GlassCard(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.emoji_events_outlined, size: 48, color: DevColors.muted),
-                const SizedBox(height: 12),
-                Text('Sin logros aún', style: DevTheme.body(color: DevColors.mutedFg)),
-                const SizedBox(height: 8),
-                Text('Participa en la comunidad para desbloquearlos', style: DevTheme.body(size: 12, color: DevColors.mutedFg)),
-              ],
-            ),
-          ),
-        ),
-      );
-    } else {
-      children.add(
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 0.85,
-          ),
-          itemCount: achievements.length,
-          itemBuilder: (_, i) => _AchievementCard(achievement: achievements[i]),
-        ),
-      );
-    }
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: children);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
   }
 
   void _showSettingsDialog() {
@@ -428,7 +443,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cerrar', style: DevTheme.body(color: DevColors.mutedFg))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cerrar',
+              style: DevTheme.body(color: DevColors.mutedFg),
+            ),
+          ),
         ],
       ),
     );
@@ -440,7 +461,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final bioCtrl = TextEditingController(text: profile.bio ?? '');
     final locationCtrl = TextEditingController(text: profile.location ?? '');
     final websiteCtrl = TextEditingController(text: profile.website ?? '');
-    final professionCtrl = TextEditingController(text: profile.profession ?? '');
+    final professionCtrl = TextEditingController(
+      text: profile.profession ?? '',
+    );
 
     final result = await showDialog<Map<String, String>>(
       context: context,
@@ -451,16 +474,43 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _EditField(controller: fullNameCtrl, label: 'Nombre completo', icon: Icons.person_rounded),
-              _EditField(controller: bioCtrl, label: 'Bio', icon: Icons.info_outline_rounded, maxLines: 3),
-              _EditField(controller: locationCtrl, label: 'Ubicación', icon: Icons.location_on_rounded),
-              _EditField(controller: websiteCtrl, label: 'Web / GitHub', icon: Icons.link_rounded),
-              _EditField(controller: professionCtrl, label: 'Profesión / Rol', icon: Icons.work_outline_rounded),
+              _EditField(
+                controller: fullNameCtrl,
+                label: 'Nombre completo',
+                icon: Icons.person_rounded,
+              ),
+              _EditField(
+                controller: bioCtrl,
+                label: 'Bio',
+                icon: Icons.info_outline_rounded,
+                maxLines: 3,
+              ),
+              _EditField(
+                controller: locationCtrl,
+                label: 'Ubicación',
+                icon: Icons.location_on_rounded,
+              ),
+              _EditField(
+                controller: websiteCtrl,
+                label: 'Web / GitHub',
+                icon: Icons.link_rounded,
+              ),
+              _EditField(
+                controller: professionCtrl,
+                label: 'Profesión / Rol',
+                icon: Icons.work_outline_rounded,
+              ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar', style: DevTheme.body(color: DevColors.mutedFg))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: DevTheme.body(color: DevColors.mutedFg),
+            ),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, {
               'fullName': fullNameCtrl.text.trim(),
@@ -469,7 +519,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               'website': websiteCtrl.text.trim(),
               'profession': professionCtrl.text.trim(),
             }),
-            style: ElevatedButton.styleFrom(backgroundColor: DevColors.primary, foregroundColor: DevColors.primaryFg),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DevColors.primary,
+              foregroundColor: DevColors.primaryFg,
+            ),
             child: const Text('Guardar'),
           ),
         ],
@@ -483,18 +536,26 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           bio: result['bio']!.isEmpty ? null : result['bio'],
           location: result['location']!.isEmpty ? null : result['location'],
           website: result['website']!.isEmpty ? null : result['website'],
-          profession: result['profession']!.isEmpty ? null : result['profession'],
+          profession: result['profession']!.isEmpty
+              ? null
+              : result['profession'],
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Perfil actualizado'), backgroundColor: DevColors.consoleGreen),
+            const SnackBar(
+              content: Text('Perfil actualizado'),
+              backgroundColor: DevColors.consoleGreen,
+            ),
           );
           _load();
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$e'), backgroundColor: DevColors.destructive),
+            SnackBar(
+              content: Text('$e'),
+              backgroundColor: DevColors.destructive,
+            ),
           );
         }
       }
@@ -562,108 +623,5 @@ class _EditField extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _AchievementCard extends StatelessWidget {
-  final Achievement achievement;
-
-  const _AchievementCard({required this.achievement});
-
-  Color _rarityColor(String rarity) {
-    switch (rarity) {
-      case 'legendary': return const Color(0xFFE8A838);
-      case 'epic': return const Color(0xFF9B59E8);
-      case 'rare': return const Color(0xFF4A9F9A);
-      default: return DevColors.mutedFg;
-    }
-  }
-
-  IconData _iconFromString(String iconName) {
-    switch (iconName) {
-      case 'emoji_events': return Icons.emoji_events_rounded;
-      case 'star': return Icons.star_rounded;
-      case 'workspace_premium': return Icons.workspace_premium_rounded;
-      case 'verified': return Icons.verified_rounded;
-      case 'military_tech': return Icons.military_tech_rounded;
-      case 'rocket_launch': return Icons.rocket_launch_rounded;
-      default: return Icons.emoji_events_rounded;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final rarityColor = _rarityColor(achievement.rarity);
-    final iconData = _iconFromString(achievement.icon);
-
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: LinearGradient(
-                colors: achievement.isUnlocked
-                    ? [rarityColor, rarityColor.withValues(alpha: 0.7)]
-                    : [DevColors.muted, DevColors.muted],
-              ),
-            ),
-            child: Icon(iconData, size: 28, color: achievement.isUnlocked ? Colors.white : DevColors.mutedFg),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            achievement.name,
-            style: DevTheme.body(size: 13, w: FontWeight.w700),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            achievement.description,
-            style: DevTheme.body(size: 10, color: DevColors.mutedFg),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: achievement.isUnlocked ? rarityColor.withValues(alpha: 0.2) : DevColors.muted.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              achievement.isUnlocked ? 'DESBLOQUEADO' : 'BLOQUEADO',
-              style: DevTheme.body(
-                size: 9,
-                w: FontWeight.w700,
-                color: achievement.isUnlocked ? rarityColor : DevColors.mutedFg,
-              ),
-            ),
-          ),
-          if (achievement.isUnlocked && achievement.unlockedAt != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Desde ${_formatDate(achievement.unlockedAt!)}',
-              style: DevTheme.body(size: 9, color: DevColors.mutedFg),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inDays > 365) return '${(diff.inDays / 365).floor()}a';
-    if (diff.inDays > 30) return '${(diff.inDays / 30).floor()}m';
-    if (diff.inDays > 0) return '${diff.inDays}d';
-    return 'hoy';
   }
 }

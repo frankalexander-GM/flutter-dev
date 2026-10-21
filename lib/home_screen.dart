@@ -69,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
           sort = 'trending'; // trending = likes + recencia
           break;
         case ViewId.explore:
-          sort = 'latest';   // cronológico
+          sort = 'latest'; // cronológico
           break;
         case ViewId.betas:
           type = 'BETA';
@@ -124,9 +124,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNotifications() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-    );
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
     if (mounted) {
       try {
         _unread = await UserService.getUnreadCount();
@@ -137,12 +136,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _openProfile() async {
+  Future<void> _openProfile([int initialTab = 0]) async {
     final auth = context.read<AuthProvider>();
     final user = auth.user;
     if (user != null) {
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)),
+        MaterialPageRoute(
+          builder: (_) =>
+              ProfileScreen(userId: user.id, initialTab: initialTab),
+        ),
       );
       if (mounted) _load();
     }
@@ -168,9 +170,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _onCreateBeta() async {
     final created = await showBetaComposeSheet(context);
     if (created == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Beta publicada!')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('¡Beta publicada!')));
       setState(() => _betasVersion++);
       _load();
     }
@@ -235,8 +236,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 18),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: DevColors.gold.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
@@ -246,7 +249,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Text(
                   'NO DISPONIBLE',
-                  style: DevTheme.labelCaps(size: 9.5, color: DevColors.goldSoft),
+                  style: DevTheme.labelCaps(
+                    size: 9.5,
+                    color: DevColors.goldSoft,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -297,7 +303,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openReports() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReportsScreen()));
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const ReportsScreen()));
   }
 
   Future<void> _searchUser(String raw) async {
@@ -312,14 +319,12 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         return;
       }
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ProfileScreen(userId: id)),
-      );
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: id)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo buscar: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('No se pudo buscar: $e')));
     }
   }
 
@@ -363,8 +368,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close_rounded,
-                        color: DevColors.mutedFg),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: DevColors.mutedFg,
+                    ),
                   ),
                 ],
               ),
@@ -402,7 +409,10 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: DevColors.border),
       ),
-      child: Text(label, style: DevTheme.body(size: 11, color: DevColors.mutedFg)),
+      child: Text(
+        label,
+        style: DevTheme.body(size: 11, color: DevColors.mutedFg),
+      ),
     );
   }
 
@@ -417,10 +427,16 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFE08A52), Color(0xFFB8502A)]),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE08A52), Color(0xFFB8502A)],
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.sports_esports_rounded, color: DevColors.cream, size: 24),
+              child: const Icon(
+                Icons.sports_esports_rounded,
+                color: DevColors.cream,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 12),
             Text('DevPlay', style: DevTheme.display(size: 20)),
@@ -430,21 +446,52 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Versión 1.0.0 MVP', style: DevTheme.body(size: 14, w: FontWeight.w600)),
+            Text(
+              'Versión 1.0.0 MVP',
+              style: DevTheme.body(size: 14, w: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
-            Text('La comunidad para devs indie y jugadores.', style: DevTheme.body(size: 13, color: DevColors.mutedFg)),
+            Text(
+              'La comunidad para devs indie y jugadores.',
+              style: DevTheme.body(size: 13, color: DevColors.mutedFg),
+            ),
             const SizedBox(height: 16),
             const Divider(color: DevColors.border),
             const SizedBox(height: 8),
-            _AboutRow(icon: Icons.code_rounded, label: 'Frontend', value: 'Flutter Web'),
-            _AboutRow(icon: Icons.storage_rounded, label: 'Backend', value: 'FastAPI + PostgreSQL'),
-            _AboutRow(icon: Icons.design_services_rounded, label: 'Diseño', value: 'Paleta cálida + Glassmorphism'),
+            _AboutRow(
+              icon: Icons.code_rounded,
+              label: 'Frontend',
+              value: 'Flutter Web',
+            ),
+            _AboutRow(
+              icon: Icons.storage_rounded,
+              label: 'Backend',
+              value: 'FastAPI + PostgreSQL',
+            ),
+            _AboutRow(
+              icon: Icons.design_services_rounded,
+              label: 'Diseño',
+              value: 'Paleta cálida + Glassmorphism',
+            ),
             const SizedBox(height: 8),
-            Text('Hecho con ❤️ para devs indie', style: DevTheme.body(size: 12, color: DevColors.mutedFg, fontStyle: FontStyle.italic)),
+            Text(
+              'Hecho con ❤️ para devs indie',
+              style: DevTheme.body(
+                size: 12,
+                color: DevColors.mutedFg,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cerrar', style: DevTheme.body(color: DevColors.mutedFg))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cerrar',
+              style: DevTheme.body(color: DevColors.mutedFg),
+            ),
+          ),
         ],
       ),
     );
@@ -452,19 +499,43 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _startTour() {
     final steps = [
-      TourStep(targetKey: _heroKey, title: 'Hero Pixel-Art', description: 'Acceso rápido a crear contenido y juegos destacados.', icon: Icons.sports_esports_rounded),
-      TourStep(targetKey: _tickerKey, title: 'Ticker de Juegos', description: 'Juegos trending en scroll horizontal infinito.', icon: Icons.videogame_asset_rounded),
-      TourStep(targetKey: _feedKey, title: 'Feed Principal', description: 'Posts, betas y streams de la comunidad.', icon: Icons.feed_rounded),
-      TourStep(targetKey: _createKey, title: 'Botón Crear', description: 'Publica posts, sube betas o crea encuestas.', icon: Icons.add_rounded),
-      TourStep(targetKey: _sidebarKey, title: 'Navegación', description: 'Cambia entre Inicio, Betas, Chat, Tienda y más.', icon: Icons.menu_rounded),
+      TourStep(
+        targetKey: _heroKey,
+        title: 'Hero Pixel-Art',
+        description: 'Acceso rápido a crear contenido y juegos destacados.',
+        icon: Icons.sports_esports_rounded,
+      ),
+      TourStep(
+        targetKey: _tickerKey,
+        title: 'Ticker de Juegos',
+        description: 'Juegos trending en scroll horizontal infinito.',
+        icon: Icons.videogame_asset_rounded,
+      ),
+      TourStep(
+        targetKey: _feedKey,
+        title: 'Feed Principal',
+        description: 'Posts, betas y streams de la comunidad.',
+        icon: Icons.feed_rounded,
+      ),
+      TourStep(
+        targetKey: _createKey,
+        title: 'Botón Crear',
+        description: 'Publica posts, sube betas o crea encuestas.',
+        icon: Icons.add_rounded,
+      ),
+      TourStep(
+        targetKey: _sidebarKey,
+        title: 'Navegación',
+        description: 'Cambia entre Inicio, Betas, Chat, Tienda y más.',
+        icon: Icons.menu_rounded,
+      ),
     ];
     _TourOverlay(steps: steps).show(context);
   }
 
   void _openAuth() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   @override
@@ -485,7 +556,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       DevSidebar(
                         currentView: _currentView,
                         onViewChanged: _onViewChanged,
-                        onProfileTap: _openProfile,
+                        onProfileTap: (tab) => _openProfile(tab),
                         onSettingsTap: _showAbout,
                         onCreatePost: _onCreatePost,
                         onCreateBeta: _onCreateBeta,
@@ -536,7 +607,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onClose: _closeDrawer,
                     currentView: _currentView,
                     onViewChanged: _onViewChanged,
-                    onProfileTap: _openProfile,
+                    onProfileTap: (tab) => _openProfile(tab),
                     onCreatePost: _onCreatePost,
                     onCreateBeta: _onCreateBeta,
                     onCreatePoll: _onCreatePoll,
@@ -571,9 +642,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return DiscoverScreen(
         onCreateTap: _onCreatePost,
         onGameTap: (name) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$name - pronto')),
-          );
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('$name - pronto')));
         },
       );
     }
@@ -608,7 +678,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: DevColors.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.videogame_asset_rounded, size: 18, color: DevColors.primary),
+                      child: Icon(
+                        Icons.videogame_asset_rounded,
+                        size: 18,
+                        color: DevColors.primary,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -622,14 +696,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     TextButton(
                       onPressed: () => _onViewChanged(ViewId.discover),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Ver todos', style: DevTheme.body(size: 12, w: FontWeight.w600, color: DevColors.primary)),
+                          Text(
+                            'Ver todos',
+                            style: DevTheme.body(
+                              size: 12,
+                              w: FontWeight.w600,
+                              color: DevColors.primary,
+                            ),
+                          ),
                           const SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_rounded, size: 14, color: DevColors.primary),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
+                            color: DevColors.primary,
+                          ),
                         ],
                       ),
                     ),
@@ -693,13 +781,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         runSpacing: gap,
                         children: _featuredGames
                             .take(4)
-                            .map((game) => SizedBox(
-                                  width: cardWidth,
-                                  child: _GameCard(
-                                    game: game,
-                                    onTap: () => _showGameDetails(game),
-                                  ),
-                                ))
+                            .map(
+                              (game) => SizedBox(
+                                width: cardWidth,
+                                child: _GameCard(
+                                  game: game,
+                                  onTap: () => _showGameDetails(game),
+                                ),
+                              ),
+                            )
                             .toList(),
                       );
                     },
@@ -720,7 +810,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: DevColors.border),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 12, offset: Offset(0, 4)),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
                 ],
               ),
               child: Padding(
@@ -735,7 +829,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         UserAvatar(
                           username:
                               context.watch<AuthProvider>().user?.username ??
-                                  'dev',
+                              'dev',
                           size: 44,
                         ),
                         const SizedBox(width: 12),
@@ -745,7 +839,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: _onCreatePost,
                             borderRadius: BorderRadius.circular(24),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: DevColors.muted.withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(24),
@@ -753,7 +850,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               child: Text(
                                 '¿Qué estás creando hoy?',
-                                style: DevTheme.body(size: 13, color: DevColors.mutedFg),
+                                style: DevTheme.body(
+                                  size: 13,
+                                  color: DevColors.mutedFg,
+                                ),
                               ),
                             ),
                           ),
@@ -813,7 +913,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: DevColors.gold.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.forum_rounded, size: 18, color: DevColors.gold),
+                      child: Icon(
+                        Icons.forum_rounded,
+                        size: 18,
+                        color: DevColors.gold,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -832,7 +936,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 40),
                     child: Center(
-                      child: CircularProgressIndicator(color: DevColors.primary),
+                      child: CircularProgressIndicator(
+                        color: DevColors.primary,
+                      ),
                     ),
                   )
                 else if (_posts.isEmpty)
@@ -846,37 +952,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     description: _error != null
                         ? '¿Está corriendo el backend en :8000?'
                         : 'Sé el primero en compartir algo.',
-                    actionLabel: _error != null ? 'Reintentar' : 'Crear publicación',
+                    actionLabel: _error != null
+                        ? 'Reintentar'
+                        : 'Crear publicación',
                     onAction: _error != null ? _load : _onCreatePost,
                   )
                 else
                   ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _showAllFeed
-                            ? _posts.length
-                            : (_posts.length > 5 ? 5 : _posts.length),
-                        itemBuilder: (_, i) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: PostCard(
-                            post: _posts[i],
-                            onProfileTap: () {
-                              final authorId = _posts[i].author?.id;
-                              if (authorId == null) return;
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => ProfileScreen(userId: authorId),
-                                ),
-                              );
-                            },
-                            onGameTap: (name) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('$name - detalles')),
-                              );
-                            },
-                          ),
-                        ),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _showAllFeed
+                        ? _posts.length
+                        : (_posts.length > 5 ? 5 : _posts.length),
+                    itemBuilder: (_, i) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: PostCard(
+                        post: _posts[i],
+                        onProfileTap: () {
+                          final authorId = _posts[i].author?.id;
+                          if (authorId == null) return;
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ProfileScreen(userId: authorId),
+                            ),
+                          );
+                        },
+                        onGameTap: (name) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('$name - detalles')),
+                          );
+                        },
                       ),
+                    ),
+                  ),
                 // Botón "Ver todo el feed" con mejor diseño
                 if (_posts.isNotEmpty && !_showAllFeed) ...[
                   const SizedBox(height: 12),
@@ -884,12 +992,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () => setState(() => _showAllFeed = true),
                       icon: const Icon(Icons.dynamic_feed_rounded, size: 16),
-                      label: Text('Ver todo el feed', style: DevTheme.body(size: 13, w: FontWeight.w600)),
+                      label: Text(
+                        'Ver todo el feed',
+                        style: DevTheme.body(size: 13, w: FontWeight.w600),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: DevColors.primary,
-                        side: BorderSide(color: DevColors.primary.withValues(alpha: 0.5)),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                        side: BorderSide(
+                          color: DevColors.primary.withValues(alpha: 0.5),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
                       ),
                     ),
                   ),
@@ -918,7 +1036,11 @@ class _GameCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: DevColors.border),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 12, offset: Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
@@ -941,12 +1063,20 @@ class _GameCard extends StatelessWidget {
                             width: double.infinity,
                             errorBuilder: (_, __, ___) => Container(
                               color: DevColors.muted,
-                              child: Icon(Icons.image, color: DevColors.mutedFg, size: 32),
+                              child: Icon(
+                                Icons.image,
+                                color: DevColors.mutedFg,
+                                size: 32,
+                              ),
                             ),
                           )
                         : Container(
                             color: DevColors.muted,
-                            child: Icon(Icons.videogame_asset_rounded, size: 32, color: DevColors.mutedFg),
+                            child: Icon(
+                              Icons.videogame_asset_rounded,
+                              size: 32,
+                              color: DevColors.mutedFg,
+                            ),
                           ),
                   ),
                   // Badge de estado (arriba-derecha)
@@ -954,15 +1084,23 @@ class _GameCard extends StatelessWidget {
                     top: 8,
                     right: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: DevColors.background.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: DevColors.primary.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: DevColors.primary.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Text(
                         (game.status ?? 'prototype').toUpperCase(),
-                        style: DevTheme.labelCaps(size: 8, color: DevColors.primary),
+                        style: DevTheme.labelCaps(
+                          size: 8,
+                          color: DevColors.primary,
+                        ),
                       ),
                     ),
                   ),
@@ -983,7 +1121,11 @@ class _GameCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(Icons.category_rounded, size: 12, color: DevColors.primary),
+                        Icon(
+                          Icons.category_rounded,
+                          size: 12,
+                          color: DevColors.primary,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -999,12 +1141,19 @@ class _GameCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          Icon(Icons.person_rounded, size: 12, color: DevColors.mutedFg),
+                          Icon(
+                            Icons.person_rounded,
+                            size: 12,
+                            color: DevColors.mutedFg,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               game.developer!,
-                              style: DevTheme.bodySecondary(size: 11, color: DevColors.mutedFg),
+                              style: DevTheme.bodySecondary(
+                                size: 11,
+                                color: DevColors.mutedFg,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1131,12 +1280,16 @@ class _HomeHero extends StatelessWidget {
                   children: [
                     // Badge de sección
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: DevColors.gold.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: DevColors.gold.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: DevColors.gold.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1152,7 +1305,10 @@ class _HomeHero extends StatelessWidget {
                           const SizedBox(width: 8),
                           Text(
                             'COMUNIDAD INDIE · DESARROLLO EN PÚBLICO',
-                            style: DevTheme.labelCaps(size: 10, color: DevColors.goldSoft),
+                            style: DevTheme.labelCaps(
+                              size: 10,
+                              color: DevColors.goldSoft,
+                            ),
                           ),
                         ],
                       ),
@@ -1168,7 +1324,10 @@ class _HomeHero extends StatelessWidget {
                       blendMode: BlendMode.srcIn,
                       child: Text(
                         'Tu próximo proyecto\nempieza aquí',
-                        style: DevTheme.display(size: wide ? 40 : 28, w: FontWeight.w800),
+                        style: DevTheme.display(
+                          size: wide ? 40 : 28,
+                          w: FontWeight.w800,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1190,9 +1349,18 @@ class _HomeHero extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: const [
-                        _HeroFeature(icon: Icons.auto_awesome_rounded, label: 'Publica avances'),
-                        _HeroFeature(icon: Icons.science_rounded, label: 'Comparte betas'),
-                        _HeroFeature(icon: Icons.people_alt_rounded, label: 'Encuentra testers'),
+                        _HeroFeature(
+                          icon: Icons.auto_awesome_rounded,
+                          label: 'Publica avances',
+                        ),
+                        _HeroFeature(
+                          icon: Icons.science_rounded,
+                          label: 'Comparte betas',
+                        ),
+                        _HeroFeature(
+                          icon: Icons.people_alt_rounded,
+                          label: 'Encuentra testers',
+                        ),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -1208,9 +1376,15 @@ class _HomeHero extends StatelessWidget {
                     else
                       Column(
                         children: [
-                          SizedBox(width: double.infinity, child: _primaryCta()),
+                          SizedBox(
+                            width: double.infinity,
+                            child: _primaryCta(),
+                          ),
                           const SizedBox(height: 10),
-                          SizedBox(width: double.infinity, child: _secondaryCta()),
+                          SizedBox(
+                            width: double.infinity,
+                            child: _secondaryCta(),
+                          ),
                         ],
                       ),
                   ],
@@ -1229,7 +1403,11 @@ class _HomeHero extends StatelessWidget {
       icon: const Icon(Icons.add_chart_rounded, size: 20),
       label: Text(
         'Crear publicación',
-        style: DevTheme.body(size: 14, w: FontWeight.w700, color: DevColors.primaryFg),
+        style: DevTheme.body(
+          size: 14,
+          w: FontWeight.w700,
+          color: DevColors.primaryFg,
+        ),
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor: DevColors.primary,
@@ -1247,12 +1425,19 @@ class _HomeHero extends StatelessWidget {
       icon: const Icon(Icons.explore_rounded, size: 20),
       label: Text(
         'Explorar juegos',
-        style: DevTheme.body(size: 14, w: FontWeight.w700, color: DevColors.goldSoft),
+        style: DevTheme.body(
+          size: 14,
+          w: FontWeight.w700,
+          color: DevColors.goldSoft,
+        ),
       ),
       style: OutlinedButton.styleFrom(
         foregroundColor: DevColors.goldSoft,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 22),
-        side: BorderSide(color: DevColors.gold.withValues(alpha: 0.6), width: 2),
+        side: BorderSide(
+          color: DevColors.gold.withValues(alpha: 0.6),
+          width: 2,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
       ),
     );
@@ -1280,7 +1465,14 @@ class _HeroFeature extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: DevColors.primary),
           const SizedBox(width: 7),
-          Text(label, style: DevTheme.body(size: 12, w: FontWeight.w600, color: DevColors.foreground)),
+          Text(
+            label,
+            style: DevTheme.body(
+              size: 12,
+              w: FontWeight.w600,
+              color: DevColors.foreground,
+            ),
+          ),
         ],
       ),
     );
@@ -1351,23 +1543,42 @@ class _EmptyState extends StatelessWidget {
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(color: DevColors.muted, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: DevColors.muted,
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, size: 36, color: DevColors.mutedFg),
             ),
             const SizedBox(height: 20),
-            Text(title, style: DevTheme.display(size: 18), textAlign: TextAlign.center),
+            Text(
+              title,
+              style: DevTheme.display(size: 18),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 8),
-            Text(description, style: DevTheme.bodySecondary(size: 14), textAlign: TextAlign.center),
+            Text(
+              description,
+              style: DevTheme.bodySecondary(size: 14),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 20),
             OutlinedButton.icon(
               onPressed: onAction,
               icon: const Icon(Icons.explore_rounded, size: 18),
-              label: Text(actionLabel, style: DevTheme.body(size: 13, w: FontWeight.w600)),
+              label: Text(
+                actionLabel,
+                style: DevTheme.body(size: 13, w: FontWeight.w600),
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: DevColors.primary,
                 side: const BorderSide(color: DevColors.primary, width: 1.5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
@@ -1443,7 +1654,10 @@ class _CreateDock extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Crear contenido', style: DevTheme.display(size: 16)),
+                child: Text(
+                  'Crear contenido',
+                  style: DevTheme.display(size: 16),
+                ),
               ),
             ),
             const SizedBox(height: 6),
@@ -1489,9 +1703,9 @@ class _CreateDock extends StatelessWidget {
         if (created == true) {
           onCreated();
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('¡Beta publicada!')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('¡Beta publicada!')));
           }
         }
         return;
@@ -1509,9 +1723,8 @@ class _CreateDock extends StatelessWidget {
           await PostService.createPost(content: content, type: action);
           onCreated();
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('¡Publicado!')),
-            );
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('¡Publicado!')));
           }
         } catch (e) {
           if (context.mounted) {
@@ -1537,9 +1750,9 @@ class _CreateDock extends StatelessWidget {
       );
       onCreated();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('¡Encuesta publicada!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('¡Encuesta publicada!')));
       }
     } catch (e) {
       if (context.mounted) {
@@ -1703,8 +1916,11 @@ class _PollComposeDialogState extends State<_PollComposeDialog> {
                         IconButton(
                           tooltip: 'Quitar opción',
                           onPressed: () => _removeOption(index),
-                          icon: const Icon(Icons.remove_circle_outline_rounded,
-                              size: 18, color: DevColors.destructive),
+                          icon: const Icon(
+                            Icons.remove_circle_outline_rounded,
+                            size: 18,
+                            color: DevColors.destructive,
+                          ),
                         ),
                     ],
                   ),
@@ -1714,21 +1930,25 @@ class _PollComposeDialogState extends State<_PollComposeDialog> {
                 TextButton.icon(
                   onPressed: _addOption,
                   icon: const Icon(Icons.add_rounded, size: 16),
-                  label: Text('Añadir opción',
-                      style: DevTheme.body(size: 12)),
+                  label: Text('Añadir opción', style: DevTheme.body(size: 12)),
                 ),
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 value: _multiple,
                 activeThumbColor: DevColors.primary,
-                title: Text('Permitir varios votos',
-                    style: DevTheme.body(size: 12.5)),
+                title: Text(
+                  'Permitir varios votos',
+                  style: DevTheme.body(size: 12.5),
+                ),
                 onChanged: (value) => setState(() => _multiple = value),
               ),
               if (_error != null)
                 Text(
                   _error!,
-                  style: DevTheme.body(size: 11.5, color: DevColors.destructive),
+                  style: DevTheme.body(
+                    size: 11.5,
+                    color: DevColors.destructive,
+                  ),
                 ),
             ],
           ),
@@ -1737,8 +1957,10 @@ class _PollComposeDialogState extends State<_PollComposeDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('Cancelar',
-              style: DevTheme.body(color: DevColors.mutedFg)),
+          child: Text(
+            'Cancelar',
+            style: DevTheme.body(color: DevColors.mutedFg),
+          ),
         ),
         ElevatedButton(
           onPressed: _submit,
@@ -1754,26 +1976,25 @@ class _PollComposeDialogState extends State<_PollComposeDialog> {
   }
 
   InputDecoration _decoration(String hint) => InputDecoration(
-        hintText: hint,
-        hintStyle: DevTheme.body(size: 12.5, color: DevColors.mutedFg),
-        filled: true,
-        fillColor: DevColors.cardRaised,
-        counterText: '',
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: DevColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: DevColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: DevColors.primary),
-        ),
-      );
+    hintText: hint,
+    hintStyle: DevTheme.body(size: 12.5, color: DevColors.mutedFg),
+    filled: true,
+    fillColor: DevColors.cardRaised,
+    counterText: '',
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: DevColors.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: DevColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: DevColors.primary),
+    ),
+  );
 }
 
 class _ComposeDialog extends StatefulWidget {
@@ -1818,7 +2039,10 @@ class _ComposeDialogState extends State<_ComposeDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('Cancelar', style: DevTheme.body(color: DevColors.mutedFg)),
+          child: Text(
+            'Cancelar',
+            style: DevTheme.body(color: DevColors.mutedFg),
+          ),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(context, _controller.text.trim()),
@@ -1940,7 +2164,10 @@ class _TourContentState extends State<_TourContent> {
     double cardTop = size.height / 2 - 80;
 
     if (rect != null) {
-      cardLeft = rect.left.clamp(16.0, (size.width - cardWidth - 16).clamp(16.0, size.width));
+      cardLeft = rect.left.clamp(
+        16.0,
+        (size.width - cardWidth - 16).clamp(16.0, size.width),
+      );
       final below = rect.bottom + 16;
       cardTop = below + 170 > size.height ? (rect.top - 186) : below;
       if (cardTop < 16) cardTop = 16;
@@ -1961,7 +2188,10 @@ class _TourContentState extends State<_TourContent> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: DevColors.gold, width: 2),
                   boxShadow: [
-                    BoxShadow(color: DevColors.gold.withValues(alpha: 0.35), blurRadius: 18),
+                    BoxShadow(
+                      color: DevColors.gold.withValues(alpha: 0.35),
+                      blurRadius: 18,
+                    ),
                   ],
                 ),
               ),
@@ -1981,7 +2211,11 @@ class _TourContentState extends State<_TourContent> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: DevColors.border),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8)),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
               ),
               child: Column(
@@ -1996,44 +2230,80 @@ class _TourContentState extends State<_TourContent> {
                           color: DevColors.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(step.icon, size: 18, color: DevColors.primary),
+                        child: Icon(
+                          step.icon,
+                          size: 18,
+                          color: DevColors.primary,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(step.title, style: DevTheme.display(size: 15, w: FontWeight.w700)),
+                        child: Text(
+                          step.title,
+                          style: DevTheme.display(size: 15, w: FontWeight.w700),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text(step.description, style: DevTheme.bodySecondary(size: 13)),
+                  Text(
+                    step.description,
+                    style: DevTheme.bodySecondary(size: 13),
+                  ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
                       Text(
                         '${_index + 1} / ${widget.steps.length}',
-                        style: DevTheme.body(size: 12, color: DevColors.mutedFg),
+                        style: DevTheme.body(
+                          size: 12,
+                          color: DevColors.mutedFg,
+                        ),
                       ),
                       const Spacer(),
                       if (_index > 0)
                         TextButton(
                           onPressed: _prev,
-                          child: Text('Atrás', style: DevTheme.body(size: 13, color: DevColors.mutedFg)),
+                          child: Text(
+                            'Atrás',
+                            style: DevTheme.body(
+                              size: 13,
+                              color: DevColors.mutedFg,
+                            ),
+                          ),
                         ),
                       TextButton(
                         onPressed: () => Navigator.of(context).maybePop(),
-                        child: Text('Saltar', style: DevTheme.body(size: 13, color: DevColors.mutedFg)),
+                        child: Text(
+                          'Saltar',
+                          style: DevTheme.body(
+                            size: 13,
+                            color: DevColors.mutedFg,
+                          ),
+                        ),
                       ),
                       ElevatedButton(
                         onPressed: _next,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: DevColors.primary,
                           foregroundColor: DevColors.primaryFg,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         child: Text(
-                          _index < widget.steps.length - 1 ? 'Siguiente' : 'Listo',
-                          style: DevTheme.body(size: 13, w: FontWeight.w600, color: DevColors.primaryFg),
+                          _index < widget.steps.length - 1
+                              ? 'Siguiente'
+                              : 'Listo',
+                          style: DevTheme.body(
+                            size: 13,
+                            w: FontWeight.w600,
+                            color: DevColors.primaryFg,
+                          ),
                         ),
                       ),
                     ],

@@ -17,7 +17,7 @@ import 'avatar.dart';
 class DevSidebar extends StatefulWidget {
   final ViewId currentView;
   final ValueChanged<ViewId> onViewChanged;
-  final VoidCallback? onProfileTap;
+  final ValueChanged<int>? onProfileTap;
   final VoidCallback? onSettingsTap;
   final VoidCallback? onCreatePost;
   final VoidCallback? onCreateBeta;
@@ -85,25 +85,30 @@ class _DevSidebarState extends State<DevSidebar> {
               // Contenido scrolleable
               Expanded(
                 child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(horizontal: _sidebarCompact ? 8 : 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: _sidebarCompact ? 8 : 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Sección 1: Menú Principal
-                      if (!_sidebarCompact) _buildSectionTitle('Menú principal'),
+                      if (!_sidebarCompact)
+                        _buildSectionTitle('Menú principal'),
                       _buildMainNav(canCreate),
 
                       // Sección 2: Crear contenido
                       if (canCreate) ...[
                         const SizedBox(height: 16),
-                        if (!_sidebarCompact) _buildSectionTitle('Crear contenido'),
+                        if (!_sidebarCompact)
+                          _buildSectionTitle('Crear contenido'),
                         _buildCreateItems(),
                       ],
 
                       // Sección 3: Mi biblioteca
                       if (canCreate) ...[
                         const SizedBox(height: 16),
-                        if (!_sidebarCompact) _buildSectionTitle('Mi biblioteca'),
+                        if (!_sidebarCompact)
+                          _buildSectionTitle('Mi biblioteca'),
                         _buildLibraryItems(user),
                       ],
 
@@ -132,7 +137,10 @@ class _DevSidebarState extends State<DevSidebar> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: _sidebarCompact ? 8 : 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: _sidebarCompact ? 8 : 12,
+        vertical: 8,
+      ),
       child: Row(
         children: [
           if (!_sidebarCompact) ...[
@@ -148,10 +156,17 @@ class _DevSidebarState extends State<DevSidebar> {
                 ),
                 border: Border.all(color: DevColors.gold35),
               ),
-              child: const Icon(Icons.sports_esports_rounded, size: 18, color: DevColors.cream),
+              child: const Icon(
+                Icons.sports_esports_rounded,
+                size: 18,
+                color: DevColors.cream,
+              ),
             ),
             const SizedBox(width: 10),
-            Text('DevPlay', style: DevTheme.display(size: 16).copyWith(letterSpacing: -0.5)),
+            Text(
+              'DevPlay',
+              style: DevTheme.display(size: 16).copyWith(letterSpacing: -0.5),
+            ),
           ] else ...[
             Container(
               width: 32,
@@ -165,14 +180,20 @@ class _DevSidebarState extends State<DevSidebar> {
                 ),
                 border: Border.all(color: DevColors.gold35),
               ),
-              child: const Icon(Icons.sports_esports_rounded, size: 18, color: DevColors.cream),
+              child: const Icon(
+                Icons.sports_esports_rounded,
+                size: 18,
+                color: DevColors.cream,
+              ),
             ),
           ],
           const Spacer(),
           // Botón opciones (⋯) / compactar
           PopupMenuButton<String>(
             icon: Icon(
-              _sidebarCompact ? Icons.chevron_right_rounded : Icons.more_horiz_rounded,
+              _sidebarCompact
+                  ? Icons.chevron_right_rounded
+                  : Icons.more_horiz_rounded,
               size: 20,
               color: DevColors.foreground,
             ),
@@ -206,7 +227,9 @@ class _DevSidebarState extends State<DevSidebar> {
                 child: Row(
                   children: [
                     Icon(
-                      _sidebarCompact ? Icons.chevron_left_rounded : Icons.compress_rounded,
+                      _sidebarCompact
+                          ? Icons.chevron_left_rounded
+                          : Icons.compress_rounded,
                       size: 16,
                       color: DevColors.foreground,
                     ),
@@ -223,7 +246,9 @@ class _DevSidebarState extends State<DevSidebar> {
                 child: Row(
                   children: [
                     Icon(
-                      _hideHelp ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                      _hideHelp
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
                       size: 16,
                       color: DevColors.foreground,
                     ),
@@ -240,7 +265,11 @@ class _DevSidebarState extends State<DevSidebar> {
                 value: 'reset',
                 child: Row(
                   children: [
-                    const Icon(Icons.restart_alt_rounded, size: 16, color: DevColors.mutedFg),
+                    const Icon(
+                      Icons.restart_alt_rounded,
+                      size: 16,
+                      color: DevColors.mutedFg,
+                    ),
                     const SizedBox(width: 10),
                     Text('Restablecer todo', style: DevTheme.body(size: 13)),
                   ],
@@ -253,9 +282,19 @@ class _DevSidebarState extends State<DevSidebar> {
                   value: 'logout',
                   child: Row(
                     children: [
-                      const Icon(Icons.logout_rounded, size: 16, color: DevColors.destructive),
+                      const Icon(
+                        Icons.logout_rounded,
+                        size: 16,
+                        color: DevColors.destructive,
+                      ),
                       const SizedBox(width: 10),
-                      Text('Cerrar sesión', style: DevTheme.body(size: 13, color: DevColors.destructive)),
+                      Text(
+                        'Cerrar sesión',
+                        style: DevTheme.body(
+                          size: 13,
+                          color: DevColors.destructive,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -275,8 +314,11 @@ class _DevSidebarState extends State<DevSidebar> {
           const SizedBox(width: 6),
           Text(
             title.toUpperCase(),
-            style: DevTheme.body(size: 10, w: FontWeight.w700, color: DevColors.mutedFg)
-                .copyWith(letterSpacing: 1.2),
+            style: DevTheme.body(
+              size: 10,
+              w: FontWeight.w700,
+              color: DevColors.mutedFg,
+            ).copyWith(letterSpacing: 1.2),
           ),
         ],
       ),
@@ -330,13 +372,10 @@ class _DevSidebarState extends State<DevSidebar> {
           onTap: () {
             switch (item.label) {
               case 'Guardados':
-                widget.onProfileTap?.call(); // con tab favoritos
+                widget.onProfileTap?.call(2); // pestaña Guardados
                 break;
               case 'Mis betas':
-                widget.onProfileTap?.call(); // con tab publicaciones
-                break;
-              case 'Logros':
-                widget.onProfileTap?.call(); // con tab logros
+                widget.onProfileTap?.call(1); // pestaña Betas
                 break;
               case 'Reportes':
                 widget.onOpenReports?.call();
@@ -368,7 +407,10 @@ class _DevSidebarState extends State<DevSidebar> {
 
   Widget _buildUserCard(user, bool canCreate) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: _sidebarCompact ? 8 : 12, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: _sidebarCompact ? 8 : 12,
+        vertical: 8,
+      ),
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: DevColors.border, width: 0.5)),
       ),
@@ -390,8 +432,8 @@ class _DevSidebarState extends State<DevSidebar> {
                     user.isGuest
                         ? 'Invitado'
                         : user.role == 'DEV'
-                            ? 'Desarrollador'
-                            : 'Jugador',
+                        ? 'Desarrollador'
+                        : 'Jugador',
                     style: DevTheme.body(size: 10, color: DevColors.mutedFg),
                   ),
                 ],
@@ -402,7 +444,11 @@ class _DevSidebarState extends State<DevSidebar> {
           ],
           if (!_sidebarCompact)
             IconButton(
-              icon: const Icon(Icons.settings_rounded, size: 18, color: DevColors.mutedFg),
+              icon: const Icon(
+                Icons.settings_rounded,
+                size: 18,
+                color: DevColors.mutedFg,
+              ),
               onPressed: widget.onSettingsTap,
               tooltip: 'Configuración',
             ),
@@ -441,9 +487,14 @@ class _NavButton extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: active ? DevColors.primary.withValues(alpha: 0.15) : Colors.transparent,
+            color: active
+                ? DevColors.primary.withValues(alpha: 0.15)
+                : Colors.transparent,
             border: active
-                ? Border.all(color: DevColors.primary.withValues(alpha: 0.5), width: 1.5)
+                ? Border.all(
+                    color: DevColors.primary.withValues(alpha: 0.5),
+                    width: 1.5,
+                  )
                 : null,
             boxShadow: active
                 ? [
@@ -463,9 +514,17 @@ class _NavButton extends StatelessWidget {
                 height: compact ? 32 : 36,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  gradient: active ? item.gradient : const LinearGradient(colors: [DevColors.muted, DevColors.muted]),
+                  gradient: active
+                      ? item.gradient
+                      : const LinearGradient(
+                          colors: [DevColors.muted, DevColors.muted],
+                        ),
                 ),
-                child: Icon(item.icon, size: compact ? 16 : 18, color: active ? DevColors.cream : DevColors.mutedFg),
+                child: Icon(
+                  item.icon,
+                  size: compact ? 16 : 18,
+                  color: active ? DevColors.cream : DevColors.mutedFg,
+                ),
               ),
               if (!compact) ...[
                 const SizedBox(width: 10),
@@ -479,7 +538,9 @@ class _NavButton extends StatelessWidget {
                         style: DevTheme.body(
                           size: 13,
                           w: active ? FontWeight.w700 : FontWeight.w500,
-                          color: active ? DevColors.foreground : DevColors.foreground,
+                          color: active
+                              ? DevColors.foreground
+                              : DevColors.foreground,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -539,13 +600,23 @@ class _CreateButton extends StatelessWidget {
                 height: compact ? 32 : 36,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  gradient: const LinearGradient(colors: [DevColors.muted, DevColors.muted]),
+                  gradient: const LinearGradient(
+                    colors: [DevColors.muted, DevColors.muted],
+                  ),
                 ),
-                child: Icon(item.icon, size: compact ? 16 : 18, color: DevColors.mutedFg),
+                child: Icon(
+                  item.icon,
+                  size: compact ? 16 : 18,
+                  color: DevColors.mutedFg,
+                ),
               ),
               if (!compact) ...[
                 const SizedBox(width: 10),
-                Text(item.label, style: DevTheme.body(size: 13, w: FontWeight.w500), overflow: TextOverflow.ellipsis),
+                Text(
+                  item.label,
+                  style: DevTheme.body(size: 13, w: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ],
           ),

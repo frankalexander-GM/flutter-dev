@@ -48,25 +48,25 @@ class UserMe {
   });
 
   factory UserMe.fromJson(Map<String, dynamic> json) => UserMe(
-        id: json['id'] as String,
-        email: json['email'] as String? ?? '',
-        username: json['username'] as String,
-        fullName: json['full_name'] as String?,
-        bio: json['bio'] as String?,
-        avatar: json['avatar'] as String?,
-        banner: json['banner'] as String?,
-        role: json['role'] as String? ?? 'USER',
-        language: json['language'] as String? ?? 'es',
-        isGuest: json['is_guest'] as bool? ?? false,
-        isPrivate: json['is_private'] as bool? ?? false,
-        tourCompleted: json['tour_completed'] as bool? ?? false,
-        devCoins: json['dev_coins'] as int? ?? 0,
-        location: json['location'] as String?,
-        website: json['website'] as String?,
-        profession: json['profession'] as String?,
-        tags: (json['tags'] as List?)?.cast<String>(),
-        createdAt: DateTime.parse(json['created_at'] as String),
-      );
+    id: json['id'] as String,
+    email: json['email'] as String? ?? '',
+    username: json['username'] as String,
+    fullName: json['full_name'] as String?,
+    bio: json['bio'] as String?,
+    avatar: json['avatar'] as String?,
+    banner: json['banner'] as String?,
+    role: json['role'] as String? ?? 'USER',
+    language: json['language'] as String? ?? 'es',
+    isGuest: json['is_guest'] as bool? ?? false,
+    isPrivate: json['is_private'] as bool? ?? false,
+    tourCompleted: json['tour_completed'] as bool? ?? false,
+    devCoins: json['dev_coins'] as int? ?? 0,
+    location: json['location'] as String?,
+    website: json['website'] as String?,
+    profession: json['profession'] as String?,
+    tags: (json['tags'] as List?)?.cast<String>(),
+    createdAt: DateTime.parse(json['created_at'] as String),
+  );
 }
 
 /// `ProfileUser` — perfil público de `GET /users/{id}`.
@@ -109,23 +109,23 @@ class ProfileUser {
   });
 
   factory ProfileUser.fromJson(Map<String, dynamic> json) => ProfileUser(
-        id: json['id'] as String,
-        username: json['username'] as String,
-        fullName: json['full_name'] as String?,
-        bio: json['bio'] as String?,
-        avatar: json['avatar'] as String?,
-        banner: json['banner'] as String?,
-        role: json['role'] as String? ?? 'USER',
-        isGuest: json['is_guest'] as bool? ?? false,
-        location: json['location'] as String?,
-        website: json['website'] as String?,
-        profession: json['profession'] as String?,
-        createdAt: DateTime.parse(json['created_at'] as String),
-        followersCount: json['followersCount'] as int? ?? 0,
-        followingCount: json['followingCount'] as int? ?? 0,
-        postsCount: json['postsCount'] as int? ?? 0,
-        isFollowing: json['isFollowing'] as bool? ?? false,
-      );
+    id: json['id'] as String,
+    username: json['username'] as String,
+    fullName: json['full_name'] as String?,
+    bio: json['bio'] as String?,
+    avatar: json['avatar'] as String?,
+    banner: json['banner'] as String?,
+    role: json['role'] as String? ?? 'USER',
+    isGuest: json['is_guest'] as bool? ?? false,
+    location: json['location'] as String?,
+    website: json['website'] as String?,
+    profession: json['profession'] as String?,
+    createdAt: DateTime.parse(json['created_at'] as String),
+    followersCount: json['followersCount'] as int? ?? 0,
+    followingCount: json['followingCount'] as int? ?? 0,
+    postsCount: json['postsCount'] as int? ?? 0,
+    isFollowing: json['isFollowing'] as bool? ?? false,
+  );
 }
 
 /// Fila de `GET /users/{id}/followers|following`.
@@ -151,15 +151,15 @@ class FollowUser {
   });
 
   factory FollowUser.fromJson(Map<String, dynamic> json) => FollowUser(
-        id: json['id'] as String,
-        username: json['username'] as String,
-        avatar: json['avatar'] as String?,
-        bio: json['bio'] as String?,
-        role: json['role'] as String? ?? 'USER',
-        followersCount: json['followersCount'] as int? ?? 0,
-        postsCount: json['postsCount'] as int? ?? 0,
-        followedAt: DateTime.parse(json['followedAt'] as String),
-      );
+    id: json['id'] as String,
+    username: json['username'] as String,
+    avatar: json['avatar'] as String?,
+    bio: json['bio'] as String?,
+    role: json['role'] as String? ?? 'USER',
+    followersCount: json['followersCount'] as int? ?? 0,
+    postsCount: json['postsCount'] as int? ?? 0,
+    followedAt: DateTime.parse(json['followedAt'] as String),
+  );
 }
 
 /// Respuesta de `GET /users/me/bookmarks` — lista de posts guardados.
@@ -173,52 +173,5 @@ class BookmarkListResponse {
         posts: (json['posts'] as List? ?? [])
             .map((e) => Post.fromJson(e as Map<String, dynamic>))
             .toList(),
-      );
-}
-
-/// Respuesta de `GET /users/me/achievements`.
-class AchievementsResponse {
-  final List<Achievement> achievements;
-
-  const AchievementsResponse({required this.achievements});
-
-  factory AchievementsResponse.fromJson(Map<String, dynamic> json) =>
-      AchievementsResponse(
-        achievements: (json['achievements'] as List? ?? [])
-            .map((e) => Achievement.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
-}
-
-/// Logro individual.
-class Achievement {
-  final String id;
-  final String name;
-  final String description;
-  final String icon;
-  final String rarity; // common, rare, epic, legendary
-  final DateTime? unlockedAt;
-  final bool isUnlocked;
-
-  const Achievement({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.icon,
-    required this.rarity,
-    this.unlockedAt,
-    required this.isUnlocked,
-  });
-
-  factory Achievement.fromJson(Map<String, dynamic> json) => Achievement(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        description: json['description'] as String,
-        icon: json['icon'] as String,
-        rarity: json['rarity'] as String? ?? 'common',
-        unlockedAt: json['unlocked_at'] != null
-            ? DateTime.parse(json['unlocked_at'] as String)
-            : null,
-        isUnlocked: json['is_unlocked'] as bool? ?? false,
       );
 }

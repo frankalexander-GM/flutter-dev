@@ -15,7 +15,7 @@ import 'animations.dart';
 /// - Header con logo, avatar/perfil, botón cerrar
 /// - Grid 2x2 de "Crear" (solo logueados)
 /// - Navegación principal con animaciones escalonadas
-/// - Grid 4 columnas de "Mi biblioteca" (solo logueados)
+/// - Grid de "Mi biblioteca" (solo logueados)
 /// - Sección Ayuda (ocultable)
 /// - Footer con CTA para invitados
 class DevDrawer extends StatefulWidget {
@@ -23,7 +23,7 @@ class DevDrawer extends StatefulWidget {
   final VoidCallback onClose;
   final ViewId currentView;
   final ValueChanged<ViewId> onViewChanged;
-  final VoidCallback? onProfileTap;
+  final ValueChanged<int>? onProfileTap;
   final VoidCallback? onCreatePost;
   final VoidCallback? onCreateBeta;
   final VoidCallback? onCreatePoll;
@@ -56,7 +56,8 @@ class DevDrawer extends StatefulWidget {
   State<DevDrawer> createState() => _DevDrawerState();
 }
 
-class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMixin {
+class _DevDrawerState extends State<DevDrawer>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   bool _hideHelp = false;
 
@@ -96,9 +97,14 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
         return AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
-            if (!_controller.isAnimating && !widget.open) return const SizedBox.shrink();
+            if (!_controller.isAnimating && !widget.open) {
+              return const SizedBox.shrink();
+            }
 
-            final slideX = -MediaQuery.of(context).size.width * 0.88 * (1 - _controller.value);
+            final slideX =
+                -MediaQuery.of(context).size.width *
+                0.88 *
+                (1 - _controller.value);
             final opacity = _controller.value;
 
             return Stack(
@@ -213,13 +219,24 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
                   ),
                   border: Border.all(color: DevColors.gold35),
                 ),
-                child: const Icon(Icons.sports_esports_rounded, size: 20, color: DevColors.cream),
+                child: const Icon(
+                  Icons.sports_esports_rounded,
+                  size: 20,
+                  color: DevColors.cream,
+                ),
               ),
               const SizedBox(width: 10),
-              Text('DevPlay', style: DevTheme.display(size: 18).copyWith(letterSpacing: -0.5)),
+              Text(
+                'DevPlay',
+                style: DevTheme.display(size: 18).copyWith(letterSpacing: -0.5),
+              ),
               const Spacer(),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_horiz_rounded, size: 20, color: DevColors.foreground),
+                icon: const Icon(
+                  Icons.more_horiz_rounded,
+                  size: 20,
+                  color: DevColors.foreground,
+                ),
                 color: DevColors.card,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -236,7 +253,9 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
                     child: Row(
                       children: [
                         Icon(
-                          _hideHelp ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                          _hideHelp
+                              ? Icons.visibility_rounded
+                              : Icons.visibility_off_rounded,
                           size: 16,
                           color: DevColors.foreground,
                         ),
@@ -252,7 +271,11 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
               ),
               const SizedBox(width: 4),
               IconButton(
-                icon: const Icon(Icons.close_rounded, size: 22, color: DevColors.foreground),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  size: 22,
+                  color: DevColors.foreground,
+                ),
                 onPressed: widget.onClose,
               ),
             ],
@@ -263,7 +286,7 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
           if (user != null) ...[
             InkWell(
               onTap: () {
-                widget.onProfileTap?.call();
+                widget.onProfileTap?.call(0);
                 widget.onClose();
               },
               borderRadius: BorderRadius.circular(12),
@@ -276,17 +299,27 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
                 ),
                 child: Row(
                   children: [
-                    UserAvatar(username: user.username, avatar: user.avatar, size: 48),
+                    UserAvatar(
+                      username: user.username,
+                      avatar: user.avatar,
+                      size: 48,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(user.username, style: DevTheme.body(size: 15, w: FontWeight.w700)),
+                          Text(
+                            user.username,
+                            style: DevTheme.body(size: 15, w: FontWeight.w700),
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             isGuest ? 'Modo invitado' : 'Ver mi perfil',
-                            style: DevTheme.body(size: 11, color: DevColors.mutedFg),
+                            style: DevTheme.body(
+                              size: 11,
+                              color: DevColors.mutedFg,
+                            ),
                           ),
                         ],
                       ),
@@ -307,9 +340,14 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: DevColors.border),
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: Text('Entrar', style: DevTheme.body(size: 13, w: FontWeight.w700)),
+                    child: Text(
+                      'Entrar',
+                      style: DevTheme.body(size: 13, w: FontWeight.w700),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -324,9 +362,14 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
                       backgroundColor: DevColors.primary,
                       foregroundColor: DevColors.primaryFg,
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: Text('Crear cuenta', style: DevTheme.body(size: 13, w: FontWeight.w700)),
+                    child: Text(
+                      'Crear cuenta',
+                      style: DevTheme.body(size: 13, w: FontWeight.w700),
+                    ),
                   ),
                 ),
               ],
@@ -344,8 +387,11 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
         const SizedBox(width: 8),
         Text(
           title.toUpperCase(),
-          style: DevTheme.body(size: 10, w: FontWeight.w700, color: DevColors.mutedFg)
-              .copyWith(letterSpacing: 1.2),
+          style: DevTheme.body(
+            size: 10,
+            w: FontWeight.w700,
+            color: DevColors.mutedFg,
+          ).copyWith(letterSpacing: 1.2),
         ),
       ],
     );
@@ -355,10 +401,26 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
     if (!canCreate) return const SizedBox.shrink();
 
     final actions = [
-      ('Publicar', Icons.article_rounded, const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)])),
-      ('Beta', Icons.sports_esports_rounded, const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)])),
-      ('Encuesta', Icons.poll_rounded, const LinearGradient(colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)])),
-      ('Stream', Icons.videocam_rounded, const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)])),
+      (
+        'Publicar',
+        Icons.article_rounded,
+        const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)]),
+      ),
+      (
+        'Beta',
+        Icons.sports_esports_rounded,
+        const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)]),
+      ),
+      (
+        'Encuesta',
+        Icons.poll_rounded,
+        const LinearGradient(colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)]),
+      ),
+      (
+        'Stream',
+        Icons.videocam_rounded,
+        const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)]),
+      ),
     ];
 
     return GridView.builder(
@@ -426,7 +488,10 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
                       child: Icon(icon, size: 22, color: Colors.white),
                     ),
                     const SizedBox(height: 8),
-                    Text(label, style: DevTheme.body(size: 12, w: FontWeight.w600)),
+                    Text(
+                      label,
+                      style: DevTheme.body(size: 12, w: FontWeight.w600),
+                    ),
                   ],
                 ),
               ),
@@ -465,20 +530,31 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
 
   Widget _buildLibraryGrid(user) {
     final items = [
-      ('Guardados', Icons.bookmark_rounded, const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)])),
-      ('Mis betas', Icons.video_library_rounded, const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)])),
-      ('Logros', Icons.emoji_events_rounded, const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB8862E)])),
-      ('Reportes', Icons.assignment_rounded, const LinearGradient(colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)])),
+      (
+        'Guardados',
+        Icons.bookmark_rounded,
+        const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)]),
+      ),
+      (
+        'Mis betas',
+        Icons.video_library_rounded,
+        const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)]),
+      ),
+      (
+        'Reportes',
+        Icons.assignment_rounded,
+        const LinearGradient(colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)]),
+      ),
     ];
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
+        crossAxisCount: 3,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
-        childAspectRatio: 0.85,
+        childAspectRatio: 0.95,
       ),
       itemCount: items.length,
       itemBuilder: (_, i) {
@@ -490,13 +566,10 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
               widget.onClose();
               switch (label) {
                 case 'Guardados':
-                  widget.onProfileTap?.call(); // con tab favoritos
+                  widget.onProfileTap?.call(2); // pestaña Guardados
                   break;
                 case 'Mis betas':
-                  widget.onProfileTap?.call(); // con tab publicaciones
-                  break;
-                case 'Logros':
-                  widget.onProfileTap?.call(); // con tab logros
+                  widget.onProfileTap?.call(1); // pestaña Betas
                   break;
                 case 'Reportes':
                   widget.onOpenReports?.call();
@@ -546,7 +619,9 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
         _HelpButton(
           icon: Icons.tour_rounded,
           label: 'Tour guiado',
-          gradient: const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB8862E)]),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFDC7A44), Color(0xFFB8862E)],
+          ),
           onTap: () {
             widget.onStartTour?.call();
             widget.onClose();
@@ -556,7 +631,9 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
         _HelpButton(
           icon: Icons.info_outline_rounded,
           label: 'Acerca de DevPlay',
-          gradient: const LinearGradient(colors: [Color(0xFF8E9BA8), Color(0xFF6B7A8A)]),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF8E9BA8), Color(0xFF6B7A8A)],
+          ),
           onTap: () {
             widget.onShowAbout?.call();
             widget.onClose();
@@ -583,7 +660,10 @@ class _DevDrawerState extends State<DevDrawer> with SingleTickerProviderStateMix
           minimumSize: const Size.fromHeight(44),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: Text('Crear cuenta gratis', style: DevTheme.body(size: 13, w: FontWeight.w700)),
+        child: Text(
+          'Crear cuenta gratis',
+          style: DevTheme.body(size: 13, w: FontWeight.w700),
+        ),
       ),
     );
   }
@@ -613,8 +693,15 @@ class _MobileNavItem extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: active ? DevColors.primary.withValues(alpha: 0.15) : Colors.transparent,
-            border: active ? Border.all(color: DevColors.primary.withValues(alpha: 0.5), width: 1.5) : null,
+            color: active
+                ? DevColors.primary.withValues(alpha: 0.15)
+                : Colors.transparent,
+            border: active
+                ? Border.all(
+                    color: DevColors.primary.withValues(alpha: 0.5),
+                    width: 1.5,
+                  )
+                : null,
           ),
           child: Row(
             children: [
@@ -623,22 +710,43 @@ class _MobileNavItem extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  gradient: active ? item.gradient : const LinearGradient(colors: [DevColors.muted, DevColors.muted]),
+                  gradient: active
+                      ? item.gradient
+                      : const LinearGradient(
+                          colors: [DevColors.muted, DevColors.muted],
+                        ),
                 ),
-                child: Icon(item.icon, size: 22, color: active ? DevColors.cream : DevColors.mutedFg),
+                child: Icon(
+                  item.icon,
+                  size: 22,
+                  color: active ? DevColors.cream : DevColors.mutedFg,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.label, style: DevTheme.body(size: 14, w: FontWeight.w700)),
-                    Text(item.description, style: DevTheme.body(size: 11, color: DevColors.mutedFg)),
+                    Text(
+                      item.label,
+                      style: DevTheme.body(size: 14, w: FontWeight.w700),
+                    ),
+                    Text(
+                      item.description,
+                      style: DevTheme.body(size: 11, color: DevColors.mutedFg),
+                    ),
                   ],
                 ),
               ),
               if (active)
-                Container(width: 6, height: 6, decoration: const BoxDecoration(color: DevColors.primary, shape: BoxShape.circle)),
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: DevColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
             ],
           ),
         ),

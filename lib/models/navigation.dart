@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 /// Vistas principales de la app (equivalentes a `ViewId` en Next.js).
 enum ViewId {
-  discover,    // Descubrir / trending
-  explore,     // Inicio / Feed principal
-  betas,       // Centro de betas
-  chat,        // Chat Mundial
-  store,       // Tienda
-  profile,     // Perfil (se abre como sheet/modal)
-  reportes,    // Reportes
-  about,       // Acerca de
-  settings,    // Configuración
+  discover, // Descubrir / trending
+  explore, // Inicio / Feed principal
+  betas, // Centro de betas
+  chat, // Chat Mundial
+  store, // Tienda
+  profile, // Perfil (se abre como sheet/modal)
+  reportes, // Reportes
+  about, // Acerca de
+  settings, // Configuración
 }
 
 /// Datos de un item de navegación principal.
@@ -136,17 +136,6 @@ const List<NavItem> kLibraryItems = [
     icon: Icons.video_library_rounded,
     gradient: const LinearGradient(
       colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-  ),
-  NavItem(
-    id: ViewId.profile, // tab 'logros'
-    label: 'Logros',
-    description: 'Tus logros desbloqueados',
-    icon: Icons.emoji_events_rounded,
-    gradient: const LinearGradient(
-      colors: [Color(0xFFDC7A44), Color(0xFFB8862E)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
