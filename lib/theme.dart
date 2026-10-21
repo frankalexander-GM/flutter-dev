@@ -90,21 +90,27 @@ abstract final class DevTheme {
           fontFamily: 'Segoe UI');
 
   // ── Superficies (glass-card / glass-strong de la web) ─────
-  static BoxDecoration glass({double radius = 8, Color? color}) =>
+  // Radio 16 por defecto: cards más suaves y modernas.
+  static BoxDecoration glass({double radius = 16, Color? color}) =>
       BoxDecoration(
         color: color ?? DevColors.card,
         border: Border.all(color: DevColors.border),
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: DevColors.gold.withValues(alpha: 0.06),
+            blurRadius: 1,
+            offset: const Offset(0, 1),
           ),
         ],
       );
 
-  static BoxDecoration glassStrong({double radius = 8}) => BoxDecoration(
+  static BoxDecoration glassStrong({double radius = 16}) => BoxDecoration(
         color: DevColors.card,
         border: Border.all(color: DevColors.border),
         borderRadius: BorderRadius.circular(radius),

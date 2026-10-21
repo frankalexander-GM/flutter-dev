@@ -18,14 +18,29 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _navIndex = 0;
+  FeedFilter _filter = FeedFilter.all;
 
   static const _nav = [
-    (Icons.home_rounded, 'Inicio'),
-    (Icons.explore_outlined, 'Explorar'),
-    (Icons.auto_awesome_outlined, 'Descubrir'),
-    (Icons.sports_esports_outlined, 'Betas'),
-    (Icons.person_outline_rounded, 'Perfil'),
+    (Icons.home_rounded, 'Inicio', FeedFilter.all),
+    (Icons.explore_outlined, 'Explorar', FeedFilter.all),
+    (Icons.auto_awesome_outlined, 'Descubrir', FeedFilter.live),
+    (Icons.sports_esports_outlined, 'Betas', FeedFilter.betas),
+    (Icons.person_outline_rounded, 'Perfil', FeedFilter.posts),
   ];
+
+  void _onNav(int i) {
+    setState(() {
+      _navIndex = i;
+      _filter = _nav[i].$3;
+    });
+    if (i == 4) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Perfil demo 👤 (pronto)')),
+        );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +64,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
             const HeroTicker(games: mockGames),
-            Expanded(child: FeedView(posts: mockPosts)),
+            Expanded(
+              child: FeedView(
+                key: ValueKey(_filter),
+                posts: mockPosts,
+                initialFilter: _filter,
+              ),
+            ),
           ],
         ),
       ),
@@ -62,34 +83,60 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: DevColors.card,
         border: const Border(
-          top: BorderSide(color: DevColors.border, width: 3),
+          top: BorderSide(color: DevColors.border, width: 2),
         ),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 16,
+              offset: Offset(0, -4)),
+        ],
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 58,
+          height: 62,
           child: Row(
             children: [
               for (var i = 0; i < _nav.length; i++)
                 Expanded(
                   child: InkWell(
-                    onTap: () => setState(() => _navIndex = i),
+                    onTap: () => _onNav(i),
+                    borderRadius: BorderRadius.circular(12),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          _nav[i].$1,
-                          size: 22,
-                          color: i == _navIndex ? DevColors.gold : DevColors.mutedFg,
+                        AnimatedContainer(
+                          duration:
+                              const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: i == _navIndex
+                                ? DevColors.gold25
+                                : Colors.transparent,
+                            borderRadius:
+                                BorderRadius.circular(999),
+                          ),
+                          child: Icon(
+                            _nav[i].$1,
+                            size: 22,
+                            color: i == _navIndex
+                                ? DevColors.gold
+                                : DevColors.mutedFg,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           _nav[i].$2,
                           style: DevTheme.body(
                             size: 10,
-                            w: i == _navIndex ? FontWeight.w700 : FontWeight.w400,
-                            color: i == _navIndex ? DevColors.gold : DevColors.mutedFg,
+                            w: i == _navIndex
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                            color: i == _navIndex
+                                ? DevColors.gold
+                                : DevColors.mutedFg,
                           ),
                         ),
                       ],
@@ -110,13 +157,13 @@ Future<void> _openCreate(BuildContext context) async {
     context: context,
     backgroundColor: DevColors.card,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (ctx) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Container(
             width: 44,
             height: 4,
@@ -127,22 +174,40 @@ Future<void> _openCreate(BuildContext context) async {
           ),
           const SizedBox(height: 14),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('Crear contenido', style: DevTheme.display(size: 16)),
+              child: Text(
+                'Crear contenido',
+                style: DevTheme.display(size: 17),
+              ),
             ),
           ),
-          const _Option(icon: Icons.sports_esports_rounded, iconColor: DevColors.amber, label: 'Subir Beta'),
-          const _Option(icon: Icons.videocam_outlined, iconColor: DevColors.wine, label: 'Subir Video'),
-          const _Option(icon: Icons.bar_chart_rounded, iconColor: DevColors.olive, label: 'Encuesta'),
+          const SizedBox(height: 6),
+          const _Option(
+              icon: Icons.sports_esports_rounded,
+              iconColor: DevColors.amber,
+              label: 'Subir Beta',
+              desc: 'Comparte tu juego con la comunidad'),
+          const _Option(
+              icon: Icons.videocam_outlined,
+              iconColor: DevColors.wine,
+              label: 'Subir Video',
+              desc: 'Gameplay, devlog o tráiler'),
+          const _Option(
+              icon: Icons.bar_chart_rounded,
+              iconColor: DevColors.olive,
+              label: 'Encuesta',
+              desc: 'Pregunta a tus jugadores'),
           const SizedBox(height: 12),
         ],
       ),
     ),
   );
   if (action != null && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$action - pronto')));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('$action — pronto 😉')));
   }
 }
 
@@ -150,19 +215,48 @@ class _Option extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String label;
-  const _Option({required this.icon, required this.iconColor, required this.label});
+  final String desc;
+  const _Option(
+      {required this.icon,
+      required this.iconColor,
+      required this.label,
+      required this.desc});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => Navigator.pop(context, label),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: iconColor),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 20, color: iconColor),
+            ),
             const SizedBox(width: 12),
-            Text(label, style: DevTheme.body(size: 14)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: DevTheme.body(
+                          size: 14, w: FontWeight.w700)),
+                  Text(desc,
+                      style: DevTheme.body(
+                          size: 11,
+                          color: DevColors.mutedFg)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: DevColors.mutedFg),
           ],
         ),
       ),

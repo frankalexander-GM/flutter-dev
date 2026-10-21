@@ -41,7 +41,9 @@ class Post {
   final List<PostMedia> media;
   final int likesCount;
   final int commentsCount;
+  final int sharesCount;
   final bool liked;
+  final bool saved;
   final BetaInfo? beta;
   const Post({
     required this.id,
@@ -52,8 +54,45 @@ class Post {
     this.media = const [],
     this.likesCount = 0,
     this.commentsCount = 0,
+    this.sharesCount = 0,
     this.liked = false,
+    this.saved = false,
     this.beta,
+  });
+
+  Post copyWith({
+    int? likesCount,
+    int? commentsCount,
+    int? sharesCount,
+    bool? liked,
+    bool? saved,
+  }) {
+    return Post(
+      id: id,
+      author: author,
+      content: content,
+      createdAt: createdAt,
+      type: type,
+      media: media,
+      likesCount: likesCount ?? this.likesCount,
+      commentsCount: commentsCount ?? this.commentsCount,
+      sharesCount: sharesCount ?? this.sharesCount,
+      liked: liked ?? this.liked,
+      saved: saved ?? this.saved,
+      beta: beta,
+    );
+  }
+}
+
+/// Comentario simple (mock local; la API real llega después).
+class PostComment {
+  final String username;
+  final String text;
+  final DateTime createdAt;
+  const PostComment({
+    required this.username,
+    required this.text,
+    required this.createdAt,
   });
 }
 
@@ -71,7 +110,9 @@ final List<Post> mockPosts = [
     media: const [],
     likesCount: 48,
     commentsCount: 7,
+    sharesCount: 12,
     liked: true,
+    saved: false,
     beta: const BetaInfo(
       title: 'Pixel Dash',
       version: 'v0.4.2',
@@ -90,6 +131,7 @@ final List<Post> mockPosts = [
     media: const [PostMedia(kind: 'image')],
     likesCount: 156,
     commentsCount: 23,
+    sharesCount: 31,
   ),
   Post(
     id: 'p3',
@@ -102,6 +144,7 @@ final List<Post> mockPosts = [
     media: const [],
     likesCount: 89,
     commentsCount: 14,
+    sharesCount: 9,
   ),
   Post(
     id: 'p4',
@@ -114,5 +157,6 @@ final List<Post> mockPosts = [
     media: const [],
     likesCount: 27,
     commentsCount: 5,
+    sharesCount: 3,
   ),
 ];
