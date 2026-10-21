@@ -556,7 +556,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       DevSidebar(
                         currentView: _currentView,
                         onViewChanged: _onViewChanged,
-                        onProfileTap: (tab) => _openProfile(tab),
                         onSettingsTap: _showAbout,
                         onCreatePost: _onCreatePost,
                         onCreateBeta: _onCreateBeta,

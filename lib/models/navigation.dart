@@ -116,43 +116,6 @@ const List<NavItem> kCreateItems = [
   ),
 ];
 
-/// Items de "Mi biblioteca" (solo usuarios logueados).
-const List<NavItem> kLibraryItems = [
-  NavItem(
-    id: ViewId.profile, // se filtra por tab 'favoritos'
-    label: 'Guardados',
-    description: 'Tus posts guardados',
-    icon: Icons.bookmark_rounded,
-    gradient: const LinearGradient(
-      colors: [Color(0xFFD9A441), Color(0xFFB8862E)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-  ),
-  NavItem(
-    id: ViewId.profile, // tab 'publicaciones'
-    label: 'Mis betas',
-    description: 'Tus betas publicadas',
-    icon: Icons.video_library_rounded,
-    gradient: const LinearGradient(
-      colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-  ),
-  NavItem(
-    id: ViewId.reportes,
-    label: 'Reportes',
-    description: 'Enviar reportes a moderación',
-    icon: Icons.assignment_rounded,
-    gradient: const LinearGradient(
-      colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-  ),
-];
-
 /// Items de "Ayuda" (ocultable).
 const List<NavItem> kHelpItems = [
   NavItem(

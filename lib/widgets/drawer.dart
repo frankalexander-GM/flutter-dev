@@ -15,7 +15,6 @@ import 'animations.dart';
 /// - Header con logo, avatar/perfil, botón cerrar
 /// - Grid 2x2 de "Crear" (solo logueados)
 /// - Navegación principal con animaciones escalonadas
-/// - Grid de "Mi biblioteca" (solo logueados)
 /// - Sección Ayuda (ocultable)
 /// - Footer con CTA para invitados
 class DevDrawer extends StatefulWidget {
@@ -158,14 +157,6 @@ class _DevDrawerState extends State<DevDrawer>
                                     _buildSectionTitle('Navegación'),
                                     const SizedBox(height: 8),
                                     _buildMainNav(canCreate),
-
-                                    // Biblioteca
-                                    if (canCreate) ...[
-                                      const SizedBox(height: 20),
-                                      _buildSectionTitle('Mi biblioteca'),
-                                      const SizedBox(height: 8),
-                                      _buildLibraryGrid(user),
-                                    ],
 
                                     // Ayuda
                                     if (!_hideHelp) ...[
@@ -525,91 +516,6 @@ class _DevDrawerState extends State<DevDrawer>
           ),
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildLibraryGrid(user) {
-    final items = [
-      (
-        'Guardados',
-        Icons.bookmark_rounded,
-        const LinearGradient(colors: [Color(0xFFD9A441), Color(0xFFB8862E)]),
-      ),
-      (
-        'Mis betas',
-        Icons.video_library_rounded,
-        const LinearGradient(colors: [Color(0xFFDC7A44), Color(0xFFB85F3A)]),
-      ),
-      (
-        'Reportes',
-        Icons.assignment_rounded,
-        const LinearGradient(colors: [Color(0xFF8FAF4A), Color(0xFF6B8E3A)]),
-      ),
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 0.95,
-      ),
-      itemCount: items.length,
-      itemBuilder: (_, i) {
-        final (label, icon, gradient) = items[i];
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              widget.onClose();
-              switch (label) {
-                case 'Guardados':
-                  widget.onProfileTap?.call(2); // pestaña Guardados
-                  break;
-                case 'Mis betas':
-                  widget.onProfileTap?.call(1); // pestaña Betas
-                  break;
-                case 'Reportes':
-                  widget.onOpenReports?.call();
-                  break;
-              }
-            },
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              decoration: BoxDecoration(
-                color: DevColors.muted.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: DevColors.border),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      gradient: gradient,
-                    ),
-                    child: Icon(icon, size: 18, color: Colors.white),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    style: DevTheme.body(size: 9, w: FontWeight.w600),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 

@@ -11,13 +11,11 @@ import 'avatar.dart';
 /// Secciones:
 /// 1. Menú Principal (kMainNav)
 /// 2. Crear contenido (solo logueados no invitados)
-/// 3. Mi biblioteca (solo logueados)
-/// 4. Ayuda (ocultable via preferencias)
-/// 5. Perfil usuario + botón configuración
+/// 3. Ayuda (ocultable via preferencias)
+/// 4. Perfil usuario + botón configuración
 class DevSidebar extends StatefulWidget {
   final ViewId currentView;
   final ValueChanged<ViewId> onViewChanged;
-  final ValueChanged<int>? onProfileTap;
   final VoidCallback? onSettingsTap;
   final VoidCallback? onCreatePost;
   final VoidCallback? onCreateBeta;
@@ -32,7 +30,6 @@ class DevSidebar extends StatefulWidget {
     super.key,
     required this.currentView,
     required this.onViewChanged,
-    this.onProfileTap,
     this.onSettingsTap,
     this.onCreatePost,
     this.onCreateBeta,
@@ -104,15 +101,7 @@ class _DevSidebarState extends State<DevSidebar> {
                         _buildCreateItems(),
                       ],
 
-                      // Sección 3: Mi biblioteca
-                      if (canCreate) ...[
-                        const SizedBox(height: 16),
-                        if (!_sidebarCompact)
-                          _buildSectionTitle('Mi biblioteca'),
-                        _buildLibraryItems(user),
-                      ],
-
-                      // Sección 4: Ayuda
+                      // Sección 3: Ayuda
                       if (!_hideHelp) ...[
                         const SizedBox(height: 16),
                         if (!_sidebarCompact) _buildSectionTitle('Ayuda'),
@@ -356,30 +345,6 @@ class _DevSidebarState extends State<DevSidebar> {
               widget.onCreateBeta?.call();
             } else if (item.label == 'Crear encuesta') {
               widget.onCreatePoll?.call();
-            }
-          },
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildLibraryItems(user) {
-    return Column(
-      children: kLibraryItems.map((item) {
-        return _CreateButton(
-          item: item,
-          compact: _sidebarCompact,
-          onTap: () {
-            switch (item.label) {
-              case 'Guardados':
-                widget.onProfileTap?.call(2); // pestaña Guardados
-                break;
-              case 'Mis betas':
-                widget.onProfileTap?.call(1); // pestaña Betas
-                break;
-              case 'Reportes':
-                widget.onOpenReports?.call();
-                break;
             }
           },
         );
