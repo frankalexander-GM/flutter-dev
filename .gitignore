@@ -32,11 +32,3 @@ migrate_working_dir/
 # Estado del tool
 .flutter_tool_state
 
-# Backend (api/) — entorno y datos locales
-api/.venv/
-api/media/
-api/*.db
-api/*.db-shm
-api/*.db-wal
-__pycache__/
-*.py[cod]
