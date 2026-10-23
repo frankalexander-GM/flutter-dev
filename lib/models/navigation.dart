@@ -80,7 +80,7 @@ const List<NavItem> kMainNav = [
   NavItem(
     id: ViewId.store,
     label: 'Tienda',
-    description: 'No disponible · En construcción',
+    description: 'Próximamente',
     icon: Icons.storefront_rounded,
     gradient: const LinearGradient(
       colors: [Color(0xFF6D28D9), Color(0xFF0EA5E9)],

@@ -16,6 +16,7 @@ import '../screens/login_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/reports_screen.dart';
+import '../screens/search_screen.dart';
 import '../services/media_service.dart';
 import '../services/post_service.dart';
 import '../services/user_service.dart';
@@ -61,6 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final _headerKey = GlobalKey();
   final _tourHelpKey = GlobalKey();
   final _homeScrollController = ScrollController();
+  final _inlinePostController = TextEditingController();
+  final _inlinePostFocusNode = FocusNode();
+  String _selectedContentType = 'Texto';
+  bool _isSubmittingInlinePost = false;
+  String _activeFeedTab = 'Recientes';
 
   @override
   void initState() {
@@ -91,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _homeScrollController.dispose();
+    _inlinePostController.dispose();
+    _inlinePostFocusNode.dispose();
     super.dispose();
   }
 
@@ -133,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
           limit: 4,
         );
         games = showcases
-            .map((p) => p.game)
+            .map(_gameFromPost)
             .whereType<GameAttachment>()
             .toList();
       } catch (_) {
@@ -224,6 +232,200 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openDrawer() => setState(() => _drawerOpen = true);
   void _closeDrawer() => setState(() => _drawerOpen = false);
+
+  void _scrollToCreateBox() {
+    if (_currentView != ViewId.explore) {
+      _onViewChanged(ViewId.explore);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_createKey.currentContext != null) {
+        Scrollable.ensureVisible(
+          _createKey.currentContext!,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOutCubic,
+        );
+        _inlinePostFocusNode.requestFocus();
+      } else {
+        _onCreatePost();
+      }
+    });
+  }
+
+  Future<void> _submitInlinePost() async {
+    final text = _inlinePostController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribe algo antes de publicar.')),
+      );
+      _inlinePostFocusNode.requestFocus();
+      return;
+    }
+
+    final auth = context.read<AuthProvider>();
+    if (!auth.isAuthenticated || (auth.user?.isGuest ?? false)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sesión para publicar en la comunidad.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmittingInlinePost = true);
+    try {
+      await PostService.createPost(content: text, type: 'POST');
+      _inlinePostController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Publicación creada con éxito!')),
+      );
+      await _load();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo publicar: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmittingInlinePost = false);
+    }
+  }
+
+  /// Abre el compositor completo (texto + imágenes/vídeos) y publica.
+  Future<void> _openComposer(String type) async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isAuthenticated || (auth.user?.isGuest ?? false)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sesión para publicar en la comunidad.')),
+      );
+      return;
+    }
+
+    final draft = await showDialog<_ComposeResult>(
+      context: context,
+      builder: (_) => _ComposeDialog(type: type),
+    );
+    if (draft == null || !mounted) return;
+    if (draft.content.isEmpty && draft.media.isEmpty) return;
+
+    try {
+      await PostService.createPost(
+        content: draft.content,
+        type: type,
+        media: draft.media,
+      );
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Publicado!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo publicar: $e')),
+      );
+    }
+  }
+
+  List<Post> get _filteredPosts {
+    if (_activeFeedTab == 'Destacados') {
+      final list = List<Post>.from(_posts);
+      list.sort((a, b) => (b.likesCount + b.commentsCount).compareTo(a.likesCount + a.commentsCount));
+      return list;
+    } else if (_activeFeedTab == 'Siguiendo') {
+      return _posts.where((p) => p.author?.username != null).toList();
+    }
+    return _posts;
+  }
+
+  Widget _buildGameSkeletonCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: DevColors.cardRaised.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: DevColors.border.withValues(alpha: 0.7)),
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: DevColors.muted.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(Icons.sports_esports_outlined, size: 14, color: DevColors.mutedFg),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            height: 6,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: DevColors.muted.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            height: 5,
+            width: 40,
+            decoration: BoxDecoration(
+              color: DevColors.muted.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedTab(String label, IconData icon) {
+    final active = _activeFeedTab == label;
+    return InkWell(
+      onTap: () => setState(() => _activeFeedTab = label),
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: active
+              ? DevColors.primary.withValues(alpha: 0.15)
+              : DevColors.cardRaised.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active ? DevColors.primary : DevColors.border,
+            width: active ? 1.5 : 1.0,
+          ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: DevColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: active ? DevColors.primary : DevColors.mutedFg,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: DevTheme.body(
+                size: 12,
+                w: active ? FontWeight.w700 : FontWeight.w500,
+                color: active ? DevColors.primary : DevColors.mutedFg,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _onCreatePost() async {
     await _CreateDock(onCreated: _load)._open(context);
@@ -369,25 +571,39 @@ class _HomeScreenState extends State<HomeScreen> {
         .push(MaterialPageRoute(builder: (_) => const ReportsScreen()));
   }
 
-  Future<void> _searchUser(String raw) async {
-    final username = raw.trim().replaceFirst(RegExp(r'^@'), '');
-    if (username.isEmpty) return;
-    try {
-      final id = await UserService.getUserIdByUsername(username);
-      if (!mounted) return;
-      if (id == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No existe el usuario @$username')),
-        );
-        return;
-      }
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => ProfileScreen(userId: id)));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('No se pudo buscar: $e')));
-    }
+  /// Convierte un showcase en tarjeta de juego. La API todavía no manda el
+  /// objeto `game`, así que se deriva del post (título, portada y beta).
+  GameAttachment? _gameFromPost(Post post) {
+    if (post.game != null) return post.game;
+    final beta = post.beta;
+    final firstLine = post.content.trim().split('\n').first.trim();
+    // Los showcases sembrados llevan "Titulo · Genero · vX.Y.Z" en la 1a linea.
+    final parts = firstLine.split('·').map((s) => s.trim()).toList();
+    final title = (beta?.title ?? parts.first).trim();
+    if (title.isEmpty) return null;
+    final genre = beta?.genre ?? (parts.length >= 2 && parts[1].isNotEmpty ? parts[1] : null);
+    final version = beta?.version ??
+        (parts.length >= 3 ? parts[2].replaceFirst('v', '') : null);
+    return GameAttachment(
+      id: post.id,
+      title: title,
+      coverUrl: post.media.isNotEmpty ? post.media.first.url : null,
+      description: post.content.trim(),
+      developer: post.author?.fullName ?? post.author?.username,
+      genre: genre,
+      version: version,
+      status: (beta?.isOpen ?? false) ? 'Beta abierta' : null,
+      viewsCount: post.likesCount,
+    );
+  }
+
+  /// Abre el buscador global (juegos, usuarios y publicaciones).
+  void _openSearch(String raw) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SearchScreen(initialQuery: raw.trim()),
+      ),
+    );
   }
 
   void _showGameDetails(GameAttachment game) {
@@ -592,7 +808,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               unreadCount: _unread,
                               onNotificationsTap: _openNotifications,
                               onLogout: _logout,
-                              onSearch: _searchUser,
+                              onSearch: _openSearch,
                               showMenu: false,
                             ),
                             Expanded(child: _buildContent()),
@@ -611,7 +827,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onNotificationsTap: _openNotifications,
                         onLogout: _logout,
                         onMenuTap: _openDrawer,
-                        onSearch: _searchUser,
+                        onSearch: _openSearch,
                         showMenu: true,
                       ),
                       Expanded(child: _buildContent()),
@@ -666,6 +882,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+
+
     // Layout principal de Inicio — diseño PRD profesional.
     // cacheExtent alto: el tour necesita que las secciones de abajo ya estén
     // montadas para poder medirlas y hacer scroll hasta ellas.
@@ -679,7 +897,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
             child: _HomeHero(
               key: _heroKey,
-              onCreatePost: _onCreatePost,
+              onCreatePost: _scrollToCreateBox,
               onExplore: () => _onViewChanged(ViewId.discover),
             ),
           ),
@@ -752,44 +970,80 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (_featuredGames.isEmpty)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: DevColors.card,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: DevColors.border),
                     ),
-                    child: Column(
+                    child: Row(
                       children: [
-                        Icon(
-                          Icons.videogame_asset_outlined,
-                          size: 32,
-                          color: DevColors.mutedFg,
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: DevColors.accentOrange.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      '¡Espacio disponible!',
+                                      style: DevTheme.body(
+                                        size: 10,
+                                        w: FontWeight.w700,
+                                        color: DevColors.accentOrange,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Aún no hay juegos publicados',
+                                style: DevTheme.body(size: 12, w: FontWeight.w700),
+                              ),
+                              Text(
+                                'Sé el primero en compartir tu proyecto aquí.',
+                                style: DevTheme.bodySecondary(size: 11),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8),
+                              ElevatedButton.icon(
+                                onPressed: _onCreateBeta,
+                                icon: const Icon(Icons.sports_esports_rounded, size: 14),
+                                label: const Text('Publicar mi juego'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: DevColors.accentOrange,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  textStyle: DevTheme.body(size: 11, w: FontWeight.w700),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Aún no hay juegos publicados',
-                          style: DevTheme.body(size: 13, w: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Comparte tu proyecto para aparecer aquí.',
-                          style: DevTheme.bodySecondary(size: 11),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _onCreatePost,
-                          icon: const Icon(Icons.add_rounded, size: 16),
-                          label: const Text('Publicar mi juego'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: DevColors.accentOrange,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shadowColor: DevColors.accentOrange.withValues(
-                              alpha: 0.4,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 72,
+                            child: Row(
+                              children: [
+                                Expanded(child: _buildGameSkeletonCard()),
+                                const SizedBox(width: 8),
+                                Expanded(child: _buildGameSkeletonCard()),
+                              ],
                             ),
                           ),
                         ),
@@ -799,16 +1053,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 else
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final isWide = constraints.maxWidth >= 800;
-                      final gap = isWide ? 16.0 : 12.0;
-                      final cardWidth = isWide
-                          ? (constraints.maxWidth - gap) / 2
-                          : constraints.maxWidth;
+                      final columns = constraints.maxWidth >= 620 ? 2 : 1;
+                      final gap = columns == 1 ? 0.0 : 12.0;
+                      final cardWidth =
+                          (constraints.maxWidth - gap * (columns - 1)) /
+                              columns;
                       return Wrap(
                         spacing: gap,
                         runSpacing: gap,
                         children: _featuredGames
-                            .take(4)
+                            .take(6)
                             .map(
                               (game) => SizedBox(
                                 width: cardWidth,
@@ -851,71 +1105,141 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Fila superior: avatar + texto clicable
+                    // Fila superior: avatar + campo de texto interactivo
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Avatar real del usuario en sesión
                         UserAvatar(
                           username:
                               context.watch<AuthProvider>().user?.username ??
                               'dev',
-                          size: 44,
+                          size: 42,
                         ),
                         const SizedBox(width: 12),
-                        // Texto clicable para crear publicación
                         Expanded(
-                          child: InkWell(
-                            onTap: _onCreatePost,
-                            borderRadius: BorderRadius.circular(24),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: DevColors.cardRaised,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: _inlinePostFocusNode.hasFocus
+                                    ? DevColors.accentOrange
+                                    : DevColors.border,
+                                width: 1.2,
                               ),
-                              decoration: BoxDecoration(
-                                color: DevColors.muted.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: DevColors.border),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            child: TextField(
+                              controller: _inlinePostController,
+                              focusNode: _inlinePostFocusNode,
+                              maxLines: 3,
+                              minLines: 1,
+                              style: DevTheme.body(
+                                size: 13,
+                                color: DevColors.foreground,
                               ),
-                              child: Text(
-                                '¿Qué estás creando hoy?',
-                                style: DevTheme.body(
+                              decoration: InputDecoration(
+                                hintText: _selectedContentType == 'Texto'
+                                    ? '¿Qué estás creando hoy? Comparte tus avances…'
+                                    : _selectedContentType == 'Imagen'
+                                    ? 'Escribe sobre la captura o arte de tu juego…'
+                                    : _selectedContentType == 'Video'
+                                    ? 'Describe el gameplay o trailer que vas a compartir…'
+                                    : 'Comparte el log de desarrollo o avance técnico…',
+                                hintStyle: DevTheme.bodySecondary(
                                   size: 13,
                                   color: DevColors.mutedFg,
                                 ),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
                               ),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    const Divider(color: DevColors.border, height: 1),
                     const SizedBox(height: 12),
-                    // Chips de tipos de contenido (Wrap responsive)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    const Divider(color: DevColors.border, height: 1),
+                    const SizedBox(height: 10),
+                    // Fila inferior: Chips de tipo con estado activo y Botón explícito de Publicar
+                    Row(
                       children: [
-                        _ChipOption(
-                          icon: Icons.text_fields,
-                          label: 'Texto',
-                          onTap: _onCreatePost,
+                        Expanded(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _ChipOption(
+                                icon: Icons.text_fields,
+                                label: 'Texto',
+                                isSelected: _selectedContentType == 'Texto',
+                                onTap: () => setState(() => _selectedContentType = 'Texto'),
+                              ),
+                              _ChipOption(
+                                icon: Icons.image,
+                                label: 'Imagen',
+                                isSelected: _selectedContentType == 'Imagen',
+                                onTap: () {
+                                  setState(() => _selectedContentType = 'Imagen');
+                                  _openComposer('POST');
+                                },
+                              ),
+                              _ChipOption(
+                                icon: Icons.video_library,
+                                label: 'Video',
+                                isSelected: _selectedContentType == 'Video',
+                                onTap: () {
+                                  setState(() => _selectedContentType = 'Video');
+                                  _openComposer('POST');
+                                },
+                              ),
+                              _ChipOption(
+                                icon: Icons.code,
+                                label: 'Avance',
+                                isSelected: _selectedContentType == 'Avance',
+                                onTap: () => setState(() => _selectedContentType = 'Avance'),
+                              ),
+                            ],
+                          ),
                         ),
-                        _ChipOption(
-                          icon: Icons.image,
-                          label: 'Imagen',
-                          onTap: _onCreatePost,
-                        ),
-                        _ChipOption(
-                          icon: Icons.video_library,
-                          label: 'Video',
-                          onTap: _onCreatePost,
-                        ),
-                        _ChipOption(
-                          icon: Icons.code,
-                          label: 'Avance',
-                          onTap: _onCreatePost,
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _isSubmittingInlinePost ? null : _submitInlinePost,
+                          icon: _isSubmittingInlinePost
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.send_rounded, size: 15),
+                          label: Text(
+                            'Publicar',
+                            style: DevTheme.body(
+                              size: 12,
+                              w: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: DevColors.accentOrange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            elevation: 2,
+                            shadowColor: DevColors.accentOrange.withValues(alpha: 0.35),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -933,35 +1257,53 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header con icono
-                Row(
-                  key: _feedKey,
+                // Header con icono y selector de secciones / tabs
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: DevColors.gold.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.forum_rounded,
-                        size: 18,
-                        color: DevColors.gold,
-                      ),
+                    Row(
+                      key: _feedKey,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: DevColors.gold.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.forum_rounded,
+                            size: 18,
+                            color: DevColors.gold,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Actividad de la comunidad',
+                            style: DevTheme.display(size: 18, w: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Actividad de la comunidad',
-                        style: DevTheme.display(size: 18, w: FontWeight.w700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildFeedTab('Recientes', Icons.access_time_rounded),
+                          const SizedBox(width: 8),
+                          _buildFeedTab('Destacados', Icons.local_fire_department_rounded),
+                          const SizedBox(width: 8),
+                          _buildFeedTab('Siguiendo', Icons.people_outline_rounded),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                // Feed principal con publicaciones destacadas
+                const SizedBox(height: 14),
+                // Feed principal filtrado
                 if (_isLoading)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 40),
@@ -985,37 +1327,54 @@ class _HomeScreenState extends State<HomeScreen> {
                     actionLabel: _error != null
                         ? 'Reintentar'
                         : 'Crear publicación',
-                    onAction: _error != null ? _load : _onCreatePost,
+                    onAction: _error != null ? _load : _scrollToCreateBox,
                   )
                 else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _showAllFeed
-                        ? _posts.length
-                        : (_posts.length > 5 ? 5 : _posts.length),
-                    itemBuilder: (_, i) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: PostCard(
-                        post: _posts[i],
-                        onProfileTap: () {
-                          final authorId = _posts[i].author?.id;
-                          if (authorId == null) return;
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => ProfileScreen(userId: authorId),
+                  Builder(
+                    builder: (context) {
+                      final displayPosts = _filteredPosts;
+                      if (displayPosts.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: Text(
+                              _activeFeedTab == 'Siguiendo'
+                                  ? 'Aún no sigues a ningún creador.'
+                                  : 'Sin publicaciones en esta sección.',
+                              style: DevTheme.bodySecondary(size: 13),
                             ),
-                          );
-                        },
-                        onGameTap: (name) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('$name - detalles')),
-                          );
-                        },
-                      ),
-                    ),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _showAllFeed
+                            ? displayPosts.length
+                            : (displayPosts.length > 5 ? 5 : displayPosts.length),
+                        itemBuilder: (_, i) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: PostCard(
+                            post: displayPosts[i],
+                            onProfileTap: () {
+                              final authorId = displayPosts[i].author?.id;
+                              if (authorId == null) return;
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ProfileScreen(userId: authorId),
+                                ),
+                              );
+                            },
+                            onGameTap: (name) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('\ - detalles')),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                // Botón "Ver todo el feed" con mejor diseño
                 if (_posts.isNotEmpty && !_showAllFeed) ...[
                   const SizedBox(height: 12),
                   Center(
@@ -1060,142 +1419,130 @@ class _GameCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: DevColors.card,
+    final cover = game.coverUrl ?? '';
+    final status = (game.status ?? '').trim();
+    final meta = [
+      if ((game.genre ?? '').isNotEmpty) game.genre!,
+      if ((game.version ?? '').isNotEmpty) 'v${game.version}',
+    ].join(' \u00b7 ');
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: DevColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: DevColors.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: DevColors.border),
           ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.all(8),
+          child: Row(
             children: [
-              // Cover image con badge de estado
-              Stack(
-                children: [
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: game.coverUrl != null
-                        ? Image.network(
-                            game.coverUrl!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: DevColors.muted,
-                              child: Icon(
-                                Icons.image,
-                                color: DevColors.mutedFg,
-                                size: 32,
-                              ),
-                            ),
-                          )
-                        : Container(
-                            color: DevColors.muted,
-                            child: Icon(
-                              Icons.videogame_asset_rounded,
-                              size: 32,
-                              color: DevColors.mutedFg,
-                            ),
-                          ),
-                  ),
-                  // Badge de estado (arriba-derecha)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: DevColors.background.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: DevColors.primary.withValues(alpha: 0.5),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 92,
+                  height: 76,
+                  child: cover.isEmpty
+                      ? _fallback()
+                      : Image.network(
+                          cover,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _fallback(),
                         ),
-                      ),
-                      child: Text(
-                        (game.status ?? 'prototype').toUpperCase(),
-                        style: DevTheme.labelCaps(
-                          size: 8,
-                          color: DevColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              // Info del juego
-              Padding(
-                padding: const EdgeInsets.all(12),
+              const SizedBox(width: 10),
+              Expanded(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       game.title,
-                      style: DevTheme.body(size: 14, w: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: DevTheme.body(size: 13.5, w: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      meta.isEmpty ? 'Juego de la comunidad' : meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: DevTheme.bodySecondary(size: 11),
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(
-                          Icons.category_rounded,
-                          size: 12,
-                          color: DevColors.primary,
+                        const Icon(
+                          Icons.person_outline_rounded,
+                          size: 11,
+                          color: DevColors.mutedFg,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            game.genre ?? 'Sin género',
-                            style: DevTheme.bodySecondary(size: 11),
+                            (game.developer ?? '').trim().isEmpty
+                                ? 'DevPlay'
+                                : game.developer!.trim(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            style: DevTheme.bodySecondary(size: 10.5),
                           ),
                         ),
-                      ],
-                    ),
-                    if (game.developer != null) ...[
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.person_rounded,
-                            size: 12,
-                            color: DevColors.mutedFg,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              game.developer!,
-                              style: DevTheme.bodySecondary(
-                                size: 11,
-                                color: DevColors.mutedFg,
+                        if (status.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DevColors.accentCyan.withValues(
+                                alpha: 0.12,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: Text(
+                              status.toUpperCase(),
+                              style: DevTheme.labelCaps(
+                                size: 7.5,
+                                color: DevColors.accentCyan,
+                              ),
                             ),
                           ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ],
                 ),
               ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: DevColors.mutedFg,
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fallback() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF152238), Color(0xFF2A1B4A)],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.sports_esports_rounded,
+          size: 24,
+          color: DevColors.accentCyan.withValues(alpha: 0.45),
         ),
       ),
     );
@@ -1611,11 +1958,13 @@ class _HeroFeature extends StatelessWidget {
 class _ChipOption extends StatelessWidget {
   final IconData icon;
   final String label;
+  final bool isSelected;
   final VoidCallback onTap;
 
   const _ChipOption({
     required this.icon,
     required this.label,
+    this.isSelected = false,
     required this.onTap,
   });
 
@@ -1624,19 +1973,45 @@ class _ChipOption extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
         decoration: BoxDecoration(
-          color: DevColors.muted.withValues(alpha: 0.4),
+          color: isSelected
+              ? DevColors.accentOrange.withValues(alpha: 0.16)
+              : DevColors.muted.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: DevColors.border),
+          border: Border.all(
+            color: isSelected ? DevColors.accentOrange : DevColors.border,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: DevColors.accentOrange.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: DevColors.primary),
+            Icon(
+              icon,
+              size: 14,
+              color: isSelected ? DevColors.accentOrange : DevColors.primary,
+            ),
             const SizedBox(width: 6),
-            Text(label, style: DevTheme.body(size: 11, w: FontWeight.w600)),
+            Text(
+              label,
+              style: DevTheme.body(
+                size: 11,
+                w: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected ? DevColors.accentOrange : DevColors.foreground,
+              ),
+            ),
           ],
         ),
       ),
@@ -1953,8 +2328,8 @@ class _PollComposeDialogState extends State<_PollComposeDialog> {
         .where((text) => text.isNotEmpty)
         .toList();
 
-    if (question.isEmpty) {
-      setState(() => _error = 'Escribe la pregunta');
+    if (question.length < 3) {
+      setState(() => _error = 'Escribe una pregunta (mínimo 3 letras)');
       return;
     }
     if (options.length < 2) {
@@ -1976,123 +2351,308 @@ class _PollComposeDialogState extends State<_PollComposeDialog> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: DevColors.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Nueva encuesta', style: DevTheme.display(size: 16)),
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _question,
-                autofocus: true,
-                maxLength: 500,
-                style: DevTheme.body(size: 13.5),
-                decoration: _decoration('¿Qué quieres preguntar?'),
-              ),
-              const SizedBox(height: 6),
-              ...List.generate(_options.length, (index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _options[index],
-                          maxLength: 200,
-                          style: DevTheme.body(size: 13),
-                          decoration: _decoration('Opción ${index + 1}'),
-                        ),
-                      ),
-                      if (_options.length > 2)
-                        IconButton(
-                          tooltip: 'Quitar opción',
-                          onPressed: () => _removeOption(index),
-                          icon: const Icon(
-                            Icons.remove_circle_outline_rounded,
-                            size: 18,
-                            color: DevColors.destructive,
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              }),
-              if (_options.length < 10)
-                TextButton.icon(
-                  onPressed: _addOption,
-                  icon: const Icon(Icons.add_rounded, size: 16),
-                  label: Text('Añadir opción', style: DevTheme.body(size: 12)),
-                ),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                value: _multiple,
-                activeThumbColor: DevColors.primary,
-                title: Text(
-                  'Permitir varios votos',
-                  style: DevTheme.body(size: 12.5),
-                ),
-                onChanged: (value) => setState(() => _multiple = value),
-              ),
-              if (_error != null)
-                Text(
-                  _error!,
-                  style: DevTheme.body(
-                    size: 11.5,
-                    color: DevColors.destructive,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(
-            'Cancelar',
-            style: DevTheme.body(color: DevColors.mutedFg),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: _submit,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: DevColors.primary,
-            foregroundColor: DevColors.primaryFg,
-            elevation: 0,
-          ),
-          child: const Text('Publicar'),
-        ),
-      ],
+  InputDecoration _decoration(String hint) {
+    OutlineInputBorder border(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(11),
+          borderSide: BorderSide(color: color, width: width),
+        );
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: DevTheme.body(size: 12.5, color: DevColors.disabled),
+      filled: true,
+      fillColor: DevColors.background.withValues(alpha: 0.5),
+      isDense: true,
+      counterText: '',
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: border(DevColors.border),
+      enabledBorder: border(DevColors.border),
+      focusedBorder: border(DevColors.accentCyan.withValues(alpha: 0.7), 1.5),
     );
   }
 
-  InputDecoration _decoration(String hint) => InputDecoration(
-    hintText: hint,
-    hintStyle: DevTheme.body(size: 12.5, color: DevColors.mutedFg),
-    filled: true,
-    fillColor: DevColors.cardRaised,
-    counterText: '',
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: DevColors.border),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: DevColors.border),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: DevColors.primary),
-    ),
-  );
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Container(
+          decoration: BoxDecoration(
+            color: DevColors.card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: DevColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 40,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: DevColors.gold.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                          color: DevColors.gold.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.poll_rounded,
+                        size: 16,
+                        color: DevColors.gold,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Nueva encuesta',
+                            style: DevTheme.display(
+                              size: 16,
+                              w: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            'Pregunta a la comunidad en el feed',
+                            style: DevTheme.bodySecondary(size: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Cerrar',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 19,
+                        color: DevColors.mutedFg,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _question,
+                  autofocus: true,
+                  maxLength: 500,
+                  maxLines: 3,
+                  minLines: 1,
+                  style: DevTheme.body(size: 13.5, height: 1.4),
+                  cursorColor: DevColors.accentCyan,
+                  decoration: _decoration('¿Qué quieres preguntar?'),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text('OPCIONES', style: DevTheme.labelCaps(size: 9)),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${_options.length}/10',
+                      style: DevTheme.bodySecondary(size: 10.5),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...List.generate(_options.length, (index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: DevColors.cardRaised,
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(color: DevColors.border),
+                          ),
+                          child: Text(
+                            '${index + 1}',
+                            style: DevTheme.body(
+                              size: 10.5,
+                              w: FontWeight.w700,
+                              color: DevColors.mutedFg,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _options[index],
+                            maxLength: 120,
+                            style: DevTheme.body(size: 13),
+                            cursorColor: DevColors.accentCyan,
+                            decoration: _decoration('Opción ${index + 1}'),
+                          ),
+                        ),
+                        if (_options.length > 2)
+                          IconButton(
+                            tooltip: 'Quitar opción',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _removeOption(index),
+                            icon: const Icon(
+                              Icons.remove_circle_outline_rounded,
+                              size: 18,
+                              color: DevColors.destructive,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+                if (_options.length < 10)
+                  TextButton.icon(
+                    onPressed: _addOption,
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: Text(
+                      'Añadir opción',
+                      style: DevTheme.body(
+                        size: 12.5,
+                        w: FontWeight.w600,
+                        color: DevColors.primary,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: DevColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      minimumSize: const Size(0, 34),
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(12, 2, 6, 2),
+                  decoration: BoxDecoration(
+                    color: DevColors.background.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(11),
+                    border: Border.all(color: DevColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.how_to_vote_rounded,
+                        size: 15,
+                        color: DevColors.mutedFg,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Permitir varios votos',
+                          style: DevTheme.body(size: 12.5),
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: _multiple,
+                        activeThumbColor: DevColors.primary,
+                        onChanged: (value) =>
+                            setState(() => _multiple = value),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: DevColors.destructive.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: DevColors.destructive.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Text(
+                      _error!,
+                      style: DevTheme.body(
+                        size: 12,
+                        color: DevColors.destructive,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'Cancelar',
+                        style: DevTheme.body(
+                          size: 13,
+                          color: DevColors.mutedFg,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      height: 40,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF00C8E0), Color(0xFF3B82F6)],
+                          ),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _submit,
+                            borderRadius: BorderRadius.circular(11),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.send_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    'Publicar',
+                                    style: DevTheme.body(
+                                      size: 13,
+                                      w: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ComposeDialog extends StatefulWidget {
@@ -2106,9 +2666,12 @@ class _ComposeDialog extends StatefulWidget {
 class _ComposeDialogState extends State<_ComposeDialog> {
   final _controller = TextEditingController();
 
-  /// Archivos ya subidos (URL publica + tipo) adjuntos a la publicacion.
+  /// Archivos ya subidos (URL pública + tipo) adjuntos a la publicación.
   final List<Map<String, String>> _media = [];
   bool _uploading = false;
+
+  static const int _maxMedia = 4;
+  static const int _maxChars = 5000;
 
   @override
   void dispose() {
@@ -2116,12 +2679,48 @@ class _ComposeDialogState extends State<_ComposeDialog> {
     super.dispose();
   }
 
-  /// Sube un archivo del dispositivo y lo adjunta a la publicacion.
-  Future<void> _attach() async {
-    if (_uploading || _media.length >= 4) return;
+  String get _title {
+    switch (widget.type) {
+      case 'STREAM':
+        return 'Nuevo directo';
+      case 'DEV_LOG':
+        return 'Nueva bitácora';
+      default:
+        return 'Nueva publicación';
+    }
+  }
+
+  IconData get _icon {
+    switch (widget.type) {
+      case 'STREAM':
+        return Icons.videocam_rounded;
+      case 'DEV_LOG':
+        return Icons.code_rounded;
+      default:
+        return Icons.edit_note_rounded;
+    }
+  }
+
+  Color get _accent {
+    switch (widget.type) {
+      case 'STREAM':
+        return DevColors.wine;
+      case 'DEV_LOG':
+        return DevColors.consoleGreen;
+      default:
+        return DevColors.primary;
+    }
+  }
+
+  bool get _canPublish =>
+      _controller.text.trim().isNotEmpty || _media.isNotEmpty;
+
+  /// Sube un archivo del dispositivo y lo adjunta a la publicación.
+  Future<void> _attach({required bool video}) async {
+    if (_uploading || _media.length >= _maxMedia) return;
     setState(() => _uploading = true);
     try {
-      final uploaded = await MediaService.pickAndUpload(allowVideo: true);
+      final uploaded = await MediaService.pickAndUpload(allowVideo: video);
       if (!mounted) return;
       if (uploaded != null) {
         setState(() {
@@ -2141,133 +2740,376 @@ class _ComposeDialogState extends State<_ComposeDialog> {
     }
   }
 
+  InputDecoration _fieldDecoration(String hint) {
+    OutlineInputBorder border(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: width),
+        );
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: DevTheme.body(size: 13, color: DevColors.disabled),
+      filled: true,
+      fillColor: DevColors.background.withValues(alpha: 0.5),
+      isDense: true,
+      counterText: '',
+      contentPadding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      border: border(DevColors.border),
+      enabledBorder: border(DevColors.border),
+      focusedBorder: border(DevColors.accentCyan.withValues(alpha: 0.7), 1.5),
+      errorBorder: border(DevColors.destructive.withValues(alpha: 0.6)),
+      errorStyle: DevTheme.body(size: 11, color: DevColors.destructive),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final canPublish = _controller.text.trim().isNotEmpty || _media.isNotEmpty;
-
-    return AlertDialog(
-      backgroundColor: DevColors.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Nueva publicación', style: DevTheme.display(size: 16)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _controller,
-            maxLines: 4,
-            autofocus: true,
-            style: DevTheme.body(size: 14),
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: '¿Qué está pasando en tu proyecto?',
-              hintStyle: DevTheme.bodySecondary(
-                size: 13,
-                color: DevColors.mutedFg,
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Container(
+          decoration: BoxDecoration(
+            color: DevColors.card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: DevColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 40,
+                offset: const Offset(0, 18),
               ),
-              filled: true,
-              fillColor: DevColors.cardRaised,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: DevColors.border),
-              ),
-            ),
+            ],
           ),
-          if (_media.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 74,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _media.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => Stack(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cabecera
+                Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        _media[i]['url']!,
-                        width: 74,
-                        height: 74,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          width: 74,
-                          height: 74,
-                          color: DevColors.cardRaised,
-                          child: const Icon(
-                            Icons.broken_image_outlined,
-                            color: DevColors.mutedFg,
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: _accent.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                          color: _accent.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Icon(_icon, size: 16, color: _accent),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _title,
+                            style: DevTheme.display(
+                              size: 16,
+                              w: FontWeight.w700,
+                            ),
                           ),
+                          Text(
+                            'Se verá en tu perfil y en el feed',
+                            style: DevTheme.bodySecondary(size: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Cerrar',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 19,
+                        color: DevColors.mutedFg,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Texto
+                TextField(
+                  controller: _controller,
+                  autofocus: true,
+                  maxLines: 6,
+                  minLines: 4,
+                  maxLength: _maxChars,
+                  onChanged: (_) => setState(() {}),
+                  style: DevTheme.body(size: 14, height: 1.45),
+                  cursorColor: DevColors.accentCyan,
+                  decoration: _fieldDecoration(
+                    '¿Qué está pasando en tu proyecto?',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.lightbulb_outline_rounded,
+                      size: 13,
+                      color: DevColors.mutedFg,
+                    ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        'Sé concreto: qué avanzaste, qué probaste, qué falta.',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: DevTheme.bodySecondary(size: 10.5),
+                      ),
+                    ),
+                    Text(
+                      '${_controller.text.length}/$_maxChars',
+                      style: DevTheme.bodySecondary(size: 10.5),
+                    ),
+                  ],
+                ),
+
+                // Adjuntos
+                if (_media.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    'ADJUNTOS · ${_media.length}/$_maxMedia',
+                    style: DevTheme.labelCaps(size: 9),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 84,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _media.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) => _thumbnail(i),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _attachButton(
+                      icon: Icons.image_outlined,
+                      label: 'Imagen',
+                      onTap: () => _attach(video: false),
+                    ),
+                    const SizedBox(width: 8),
+                    _attachButton(
+                      icon: Icons.videocam_outlined,
+                      label: 'Video',
+                      onTap: () => _attach(video: true),
+                    ),
+                    if (_uploading) ...[
+                      const SizedBox(width: 10),
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Subiendo…',
+                        style: DevTheme.bodySecondary(size: 11),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'Cancelar',
+                        style: DevTheme.body(
+                          size: 13,
+                          color: DevColors.mutedFg,
                         ),
                       ),
                     ),
-                    Positioned(
-                      top: 2,
-                      right: 2,
-                      child: InkWell(
-                        onTap: () => setState(() => _media.removeAt(i)),
-                        child: const CircleAvatar(
-                          radius: 9,
-                          backgroundColor: Color(0xCC060B14),
-                          child: Icon(
-                            Icons.close_rounded,
-                            size: 12,
-                            color: DevColors.cream,
+                    const Spacer(),
+                    SizedBox(
+                      height: 40,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: _canPublish && !_uploading
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFF00C8E0),
+                                    Color(0xFF3B82F6),
+                                  ],
+                                )
+                              : null,
+                          color: _canPublish && !_uploading
+                              ? null
+                              : DevColors.muted,
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: (_canPublish && !_uploading)
+                                ? () => Navigator.pop(
+                                    context,
+                                    _ComposeResult(
+                                      content: _controller.text.trim(),
+                                      media: List.of(_media),
+                                    ),
+                                  )
+                                : null,
+                            borderRadius: BorderRadius.circular(11),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.send_rounded,
+                                    size: 16,
+                                    color: _canPublish && !_uploading
+                                        ? Colors.white
+                                        : DevColors.disabled,
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    'Publicar',
+                                    style: DevTheme.body(
+                                      size: 13,
+                                      w: FontWeight.w700,
+                                      color: _canPublish && !_uploading
+                                          ? Colors.white
+                                          : DevColors.disabled,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _attachButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final enabled = !_uploading && _media.length < _maxMedia;
+    return SizedBox(
+      height: 34,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(10),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: DevColors.cardRaised.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: DevColors.accentCyan.withValues(alpha: 0.22),
               ),
             ),
-          ],
-          const SizedBox(height: 4),
-          TextButton.icon(
-            onPressed: (_uploading || _media.length >= 4) ? null : _attach,
-            icon: _uploading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.add_photo_alternate_outlined, size: 18),
-            label: Text(
-              _uploading
-                  ? 'Subiendo...'
-                  : _media.length >= 4
-                  ? 'Maximo 4 archivos'
-                  : 'Anadir imagen o video',
-              style: DevTheme.body(size: 12.5, color: DevColors.primary),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 15,
+                  color: enabled ? DevColors.accentCyan : DevColors.disabled,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: DevTheme.body(
+                    size: 12,
+                    w: FontWeight.w600,
+                    color: enabled ? DevColors.foreground : DevColors.disabled,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _thumbnail(int index) {
+    final item = _media[index];
+    final isVideo = item['kind'] == 'video';
+    return SizedBox(
+      width: 84,
+      height: 84,
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: 84,
+              height: 84,
+              child: isVideo
+                  ? Container(
+                      color: DevColors.cardRaised,
+                      child: const Center(
+                        child: Icon(
+                          Icons.play_circle_outline_rounded,
+                          size: 26,
+                          color: DevColors.accentCyan,
+                        ),
+                      ),
+                    )
+                  : Image.network(
+                      item['url']!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: DevColors.cardRaised,
+                        child: const Icon(
+                          Icons.broken_image_outlined,
+                          size: 22,
+                          color: DevColors.mutedFg,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+          Positioned(
+            top: 2,
+            right: 2,
+            child: InkWell(
+              onTap: () => setState(() => _media.removeAt(index)),
+              child: const CircleAvatar(
+                radius: 9,
+                backgroundColor: Color(0xCC060B14),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 12,
+                  color: DevColors.cream,
+                ),
+              ),
             ),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(
-            'Cancelar',
-            style: DevTheme.body(color: DevColors.mutedFg),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: (_uploading || !canPublish)
-              ? null
-              : () => Navigator.pop(
-                  context,
-                  _ComposeResult(
-                    content: _controller.text.trim(),
-                    media: List.of(_media),
-                  ),
-                ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: DevColors.primary,
-            foregroundColor: DevColors.primaryFg,
-          ),
-          child: const Text('Publicar'),
-        ),
-      ],
     );
   }
 }

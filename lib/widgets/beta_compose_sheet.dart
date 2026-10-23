@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -21,8 +21,8 @@ Future<bool?> showBetaComposeSheet(BuildContext context) {
           insetPadding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: 900,
-              maxHeight: size.height * 0.9,
+              maxWidth: 560,
+              maxHeight: size.height * 0.82,
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(22),
@@ -45,7 +45,7 @@ Future<bool?> showBetaComposeSheet(BuildContext context) {
     builder: (sheetContext) {
       final size = MediaQuery.sizeOf(sheetContext);
       return SizedBox(
-        height: size.height * 0.94,
+        height: size.height * 0.80,
         child: const BetaComposeSheet(),
       );
     },
@@ -339,7 +339,7 @@ class _BetaComposeSheetState extends State<BetaComposeSheet> {
                   padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 820),
+                      constraints: const BoxConstraints(maxWidth: 520),
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 220),
                         switchInCurve: Curves.easeOut,
@@ -507,9 +507,9 @@ class _BetaComposeSheetState extends State<BetaComposeSheet> {
           controller: _description,
           label: 'Descripción *',
           hint: '¿De qué trata? ¿Qué feedback necesitas de los testers?',
-          maxLines: 5,
+          maxLines: 3,
           maxLength: 8000,
-          showCounter: true,
+          showCounter: false,
           validator: (value) => _required(value, max: 8000),
         ),
         const SizedBox(height: 14),
@@ -893,7 +893,7 @@ class _BetaComposeSheetState extends State<BetaComposeSheet> {
           hint: 'SO, RAM, GPU, espacio en disco…',
           maxLines: 4,
           maxLength: 4000,
-          showCounter: true,
+          showCounter: false,
           validator: (value) => _optionalText(value, 4000),
         ),
         const SizedBox(height: 14),
@@ -903,7 +903,7 @@ class _BetaComposeSheetState extends State<BetaComposeSheet> {
           hint: 'Cómo descomprimir, ejecutar, reportar bugs…',
           maxLines: 4,
           maxLength: 4000,
-          showCounter: true,
+          showCounter: false,
           validator: (value) => _optionalText(value, 4000),
         ),
         const SizedBox(height: 14),
@@ -913,7 +913,7 @@ class _BetaComposeSheetState extends State<BetaComposeSheet> {
           hint: 'Qué cambia respecto a la anterior…',
           maxLines: 4,
           maxLength: 8000,
-          showCounter: true,
+          showCounter: false,
           validator: (value) => _optionalText(value, 8000),
         ),
         const SizedBox(height: 18),
@@ -1237,8 +1237,8 @@ class _BetaField extends StatelessWidget {
         filled: true,
         fillColor: DevColors.muted,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 13,
+          horizontal: 12,
+          vertical: 9,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(11),

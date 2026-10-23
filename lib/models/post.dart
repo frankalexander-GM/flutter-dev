@@ -386,14 +386,28 @@ class Post {
   }
 
   /// Título del post (para game_showcase usa el título del juego, si no el contenido truncado)
+  /// Título de la tarjeta: la primera línea si el post tiene varias; si es de
+  /// una sola línea, el contenido tal cual (el widget recorta con `maxLines`).
   String get title {
     if (type == PostType.game_showcase && game != null) {
       return game!.title;
     }
-    if (content.length > 50) {
-      return '${content.substring(0, 50)}...';
+    final lines = content.split('\n');
+    final firstLine = lines.first.trim();
+    if (lines.length > 1 && firstLine.length > 60) {
+      return '${firstLine.substring(0, 60)}...';
     }
-    return content;
+    return firstLine;
+  }
+
+  /// Cuerpo bajo el título. Vacío cuando el título ya es todo el texto (posts
+  /// de una sola línea): así la tarjeta no repite el mismo contenido.
+  String get body {
+    if (content.isEmpty) return '';
+    if (type == PostType.game_showcase && game != null) return content.trim();
+    final lines = content.split('\n');
+    if (lines.length <= 1) return '';
+    return lines.skip(1).join('\n').trim();
   }
 }
 

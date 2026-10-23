@@ -5,6 +5,7 @@ import '../../models/navigation.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme.dart';
 import 'avatar.dart';
+import 'download_sheet.dart';
 
 /// Sidebar lateral para desktop (>= 800px) — equivalente al `Sidebar` de Next.js.
 ///
@@ -66,7 +67,7 @@ class _DevSidebarState extends State<DevSidebar> {
         final canCreate = isAuthed && !isGuest;
 
         return Container(
-          width: _sidebarCompact ? 64 : 224,
+          width: _sidebarCompact ? 76 : 224,
           decoration: const BoxDecoration(
             color: DevColors.surface,
             border: Border(
@@ -132,6 +133,69 @@ class _DevSidebarState extends State<DevSidebar> {
   }
 
   Widget _buildHeader() {
+    final logo = Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF00F0FF), Color(0xFF8B5CF6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: DevColors.gold35),
+      ),
+      child: const Icon(
+        Icons.sports_esports_rounded,
+        size: 18,
+        color: DevColors.cream,
+      ),
+    );
+
+    // En compacto no cabe el logo + el menú en la misma fila: se apilan.
+    if (_sidebarCompact) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Column(
+          children: [
+            logo,
+            const SizedBox(height: 6),
+            Tooltip(
+              message: 'Expandir menú',
+              child: InkWell(
+                onTap: () => setState(() => _sidebarCompact = false),
+                borderRadius: BorderRadius.circular(8),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: DevColors.mutedFg,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Tooltip(
+              message: 'Descargar la app',
+              child: InkWell(
+                onTap: () => showDownloadSheet(context),
+                borderRadius: BorderRadius.circular(8),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.download_rounded,
+                    size: 18,
+                    color: DevColors.accentCyan,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: _sidebarCompact ? 8 : 12,
@@ -184,6 +248,16 @@ class _DevSidebarState extends State<DevSidebar> {
             ),
           ],
           const Spacer(),
+          IconButton(
+            tooltip: 'Descargar la app',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => showDownloadSheet(context),
+            icon: const Icon(
+              Icons.download_rounded,
+              size: 19,
+              color: DevColors.mutedFg,
+            ),
+          ),
           // Botón opciones (⋯) / compactar
           PopupMenuButton<String>(
             icon: Icon(
@@ -428,6 +502,9 @@ class _DevSidebarState extends State<DevSidebar> {
         border: Border(top: BorderSide(color: DevColors.border, width: 0.5)),
       ),
       child: Row(
+        mainAxisAlignment: _sidebarCompact
+            ? MainAxisAlignment.center
+            : MainAxisAlignment.start,
         children: [
           InkWell(
             onTap: widget.onProfileTap,
@@ -502,6 +579,9 @@ class _NavButton extends StatelessWidget {
                 : null,
           ),
           child: Row(
+            mainAxisAlignment: compact
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start,
             children: [
               // Icono con gradiente
               Container(
@@ -528,27 +608,59 @@ class _NavButton extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        item.label,
-                        style: DevTheme.body(
-                          size: 13,
-                          w: active ? FontWeight.w700 : FontWeight.w500,
-                          color: active
-                              ? DevColors.accentCyan
-                              : DevColors.mutedFg,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              item.label,
+                              style: DevTheme.body(
+                                size: 13,
+                                w: active ? FontWeight.w700 : FontWeight.w500,
+                                color: active
+                                    ? DevColors.accentCyan
+                                    : DevColors.mutedFg,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (item.id == ViewId.store) ...[
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: DevColors.gold.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: DevColors.gold.withValues(alpha: 0.4),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Text(
+                                'Próximamente',
+                                style: DevTheme.body(
+                                  size: 8.5,
+                                  w: FontWeight.w700,
+                                  color: DevColors.gold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      Text(
-                        item.description,
-                        style: DevTheme.body(
-                          size: 10,
-                          color: active
-                              ? DevColors.accentCyan
-                              : DevColors.mutedFg,
+                      if (item.id != ViewId.store)
+                        Text(
+                          item.description,
+                          style: DevTheme.body(
+                            size: 10,
+                            color: active
+                                ? DevColors.accentCyan
+                                : DevColors.mutedFg,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ],
                   ),
                 ),
@@ -591,6 +703,9 @@ class _CreateButton extends StatelessWidget {
             color: Colors.transparent,
           ),
           child: Row(
+            mainAxisAlignment: compact
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start,
             children: [
               Container(
                 width: compact ? 32 : 36,

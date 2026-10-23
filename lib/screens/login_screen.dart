@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../home_screen.dart';
 import '../providers/auth_provider.dart';
 import '../theme.dart';
+import '../widgets/auth_kit.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -49,174 +50,348 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _goRegister() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF00F0FF), Color(0xFF8B5CF6)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      border: Border.all(color: DevColors.gold35),
-                    ),
-                    child: const Icon(Icons.sports_esports_rounded,
-                        size: 36, color: DevColors.cream),
+      backgroundColor: DevColors.background,
+      body: AuthBackdrop(
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 940;
+
+              return SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: wide ? 48 : 20,
+                  vertical: wide ? 36 : 22,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight:
+                        constraints.maxHeight - (wide ? 72 : 44),
                   ),
-                  const SizedBox(height: 16),
-                  Text('DevPlay', style: DevTheme.display(size: 28)),
-                  const SizedBox(height: 8),
-                  Text('Inicia sesion para continuar',
-                      style:
-                          DevTheme.body(size: 14, color: DevColors.mutedFg)),
-                  const SizedBox(height: 32),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: _inputDecoration(
-                        'Correo electronico', Icons.email_outlined),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Ingresa tu correo';
-                      if (!v.contains('@')) return 'Correo invalido';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: _inputDecoration(
-                            'Contrasena', Icons.lock_outline)
-                        .copyWith(
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                            size: 20),
-                        onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
-                      ),
-                    ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) {
-                        return 'Ingresa tu contrasena';
-                      }
-                      return null;
-                    },
-                    onFieldSubmitted: (_) => _login(),
-                  ),
-                  const SizedBox(height: 24),
-                  Consumer<AuthProvider>(
-                    builder: (context, auth, _) {
-                      if (auth.error == null) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          auth.error!,
-                          style: DevTheme.body(
-                              size: 13, color: DevColors.destructive),
-                          textAlign: TextAlign.center,
-                        ),
-                      );
-                    },
-                  ),
-                  Consumer<AuthProvider>(
-                    builder: (context, auth, _) {
-                      return SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: auth.isLoading ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: DevColors.primary,
-                            foregroundColor: DevColors.primaryFg,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: auth.isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
-                                )
-                              : const Text(
-                                  'Iniciar sesion',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15),
+                  child: Center(
+                    child: wide
+                        ? Row(
+                            children: [
+                              Expanded(child: _BrandSide()),
+                              const SizedBox(width: 56),
+                              _FormSide(
+                                formKey: _formKey,
+                                email: _emailController,
+                                password: _passwordController,
+                                obscure: _obscurePassword,
+                                onToggleObscure: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
                                 ),
-                        ),
-                      );
-                    },
+                                onLogin: _login,
+                                onGuest: _guest,
+                                onRegister: _goRegister,
+                              ),
+                            ],
+                          )
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const AuthBrandMark(size: 42),
+                              const SizedBox(height: 22),
+                              _FormSide(
+                                formKey: _formKey,
+                                email: _emailController,
+                                password: _passwordController,
+                                obscure: _obscurePassword,
+                                onToggleObscure: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                                onLogin: _login,
+                                onGuest: _guest,
+                                onRegister: _goRegister,
+                              ),
+                            ],
+                          ),
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 44,
-                    child: OutlinedButton.icon(
-                      onPressed: _guest,
-                      icon: const Icon(Icons.explore_outlined, size: 18),
-                      label: const Text('Entrar como invitado'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: DevColors.gold,
-                        side: const BorderSide(color: DevColors.border),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                    ),
-                    child: Text(
-                      'No tienes cuenta? Registrate',
-                      style: DevTheme.body(
-                          size: 14, color: DevColors.gold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
+}
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20),
-      filled: true,
-      fillColor: DevColors.cardRaised,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: DevColors.border),
+/// Lado izquierdo (solo escritorio): marca + propuesta de valor.
+class _BrandSide extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AuthBrandMark(size: 46),
+        const SizedBox(height: 34),
+        Text(
+          'Donde tus juegos\nencuentran testers.',
+          style: DevTheme.display(size: 40, w: FontWeight.w800)
+              .copyWith(height: 1.12, letterSpacing: -1),
+        ),
+        const SizedBox(height: 16),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Text(
+            'Comparte builds tempranas, recibe feedback de verdad y descubre '
+            'lo que la comunidad está creando ahora mismo.',
+            style: DevTheme.body(
+              size: 15,
+              height: 1.5,
+              color: DevColors.mutedFg,
+            ),
+          ),
+        ),
+        const SizedBox(height: 28),
+        const _Bullet(
+          icon: Icons.science_rounded,
+          text: 'Publica betas y encuentra testers',
+        ),
+        const _Bullet(
+          icon: Icons.forum_rounded,
+          text: 'Feedback real en cada versión',
+        ),
+        const _Bullet(
+          icon: Icons.travel_explore_rounded,
+          text: 'Descubre juegos antes que nadie',
+        ),
+        const SizedBox(height: 30),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: DevColors.card.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: DevColors.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.groups_rounded,
+                    size: 14,
+                    color: DevColors.accentCyan,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Comunidad indie',
+                    style: DevTheme.body(
+                      size: 11,
+                      w: FontWeight.w600,
+                      color: DevColors.mutedFg,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _Bullet extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _Bullet({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: DevColors.accentCyan.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(
+                color: DevColors.accentCyan.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Icon(icon, size: 15, color: DevColors.accentCyan),
+          ),
+          const SizedBox(width: 11),
+          Text(
+            text,
+            style: DevTheme.body(
+              size: 13.5,
+              color: DevColors.foreground.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: DevColors.border),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: DevColors.primary, width: 2),
+    );
+  }
+}
+
+/// Tarjeta con el formulario.
+class _FormSide extends StatelessWidget {
+  final GlobalKey<FormState> formKey;
+  final TextEditingController email;
+  final TextEditingController password;
+  final bool obscure;
+  final VoidCallback onToggleObscure;
+  final Future<void> Function() onLogin;
+  final Future<void> Function() onGuest;
+  final VoidCallback onRegister;
+
+  const _FormSide({
+    required this.formKey,
+    required this.email,
+    required this.password,
+    required this.obscure,
+    required this.onToggleObscure,
+    required this.onLogin,
+    required this.onGuest,
+    required this.onRegister,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 430,
+      child: AuthPanel(
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Iniciar sesión',
+                style: DevTheme.display(size: 24, w: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Entra para publicar, probar betas y seguir a otros devs.',
+                style: DevTheme.body(size: 13, color: DevColors.mutedFg),
+              ),
+              const SizedBox(height: 22),
+              AuthField(
+                label: 'Correo electrónico',
+                hint: 'tu@correo.com',
+                icon: Icons.alternate_email_rounded,
+                controller: email,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                validator: (v) {
+                  final value = (v ?? '').trim();
+                  if (value.isEmpty) return 'Escribe tu correo';
+                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)) {
+                    return 'Ese correo no parece válido';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              AuthField(
+                label: 'Contraseña',
+                hint: 'Tu contraseña',
+                icon: Icons.lock_outline_rounded,
+                controller: password,
+                obscure: obscure,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => onLogin(),
+                suffix: IconButton(
+                  tooltip: obscure ? 'Mostrar' : 'Ocultar',
+                  iconSize: 19,
+                  color: DevColors.mutedFg,
+                  icon: Icon(
+                    obscure
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                  ),
+                  onPressed: onToggleObscure,
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Escribe tu contraseña';
+                  return null;
+                },
+              ),
+              Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  if (auth.error == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: AuthErrorBanner(message: auth.error!),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  return AuthButton(
+                    label: 'Entrar',
+                    icon: Icons.login_rounded,
+                    loading: auth.isLoading,
+                    onPressed: auth.isLoading ? null : onLogin,
+                  );
+                },
+              ),
+              const SizedBox(height: 18),
+              const AuthOr(label: 'o entra sin cuenta'),
+              const SizedBox(height: 18),
+              Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  return AuthButton(
+                    label: 'Explorar como invitado',
+                    icon: Icons.explore_outlined,
+                    primary: false,
+                    height: 46,
+                    onPressed: auth.isLoading ? null : onGuest,
+                  );
+                },
+              ),
+              const SizedBox(height: 18),
+              Center(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      '¿No tienes cuenta?',
+                      style: DevTheme.body(size: 13, color: DevColors.mutedFg),
+                    ),
+                    TextButton(
+                      onPressed: onRegister,
+                      style: TextButton.styleFrom(
+                        foregroundColor: DevColors.accentCyan,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: const Size(0, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'Crear cuenta',
+                        style: DevTheme.body(
+                          size: 13,
+                          w: FontWeight.w700,
+                          color: DevColors.accentCyan,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

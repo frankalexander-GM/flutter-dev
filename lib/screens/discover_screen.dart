@@ -1,17 +1,20 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/beta.dart';
 import '../../models/post.dart';
 import '../../models/trending_game.dart';
+import '../../services/api_service.dart';
 import '../../services/beta_service.dart';
 import '../../services/post_service.dart';
 import '../../theme.dart';
 import 'profile_screen.dart';
+import 'search_screen.dart';
 import '../../utils/format.dart';
 import 'trending_games_screen.dart';
 import '../../widgets/animations.dart';
+import '../../widgets/avatar.dart';
 import '../../widgets/game_compose_sheet.dart';
 import '../../widgets/hero_3d_shapes.dart';
 import '../../widgets/hero_video.dart';
@@ -62,6 +65,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   // Estado de solicitud de beta (evita dobles envíos)
   bool _joiningBeta = false;
 
+  // En 'Todo' el feed se corta para que las secciones queden a la vista.
+  static const int _feedPreviewCount = 6;
+  bool _feedExpanded = false;
+
+  // Devs recomendados y temas populares (GET /discover).
+  List<_DiscoverUser> _recommendedUsers = const [];
+  List<_DiscoverTag> _popularTags = const [];
+
   // Keys para navegación suave
   final _feedKey = GlobalKey();
 
@@ -77,8 +88,33 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       _loadTrendingGames(),
       _loadDevGames(),
       _loadBetaGames(),
+      _loadDiscover(),
       _loadPosts(),
     ]);
+  }
+
+  /// Agregado del backend: devs recomendados y temas populares.
+  Future<void> _loadDiscover() async {
+    try {
+      final data = await ApiService.getJson('/discover');
+      if (!mounted) return;
+      final users = (data['recommendedUsers'] as List? ?? [])
+          .map((e) => _DiscoverUser.fromJson(e as Map<String, dynamic>))
+          .where((u) => u.id.isNotEmpty)
+          .take(8)
+          .toList();
+      final tags = (data['popularTags'] as List? ?? [])
+          .map((e) => _DiscoverTag.fromJson(e as Map<String, dynamic>))
+          .where((t) => t.tag.isNotEmpty)
+          .take(14)
+          .toList();
+      setState(() {
+        _recommendedUsers = users;
+        _popularTags = tags;
+      });
+    } catch (_) {
+      // Sección opcional: si falla no rompe el resto de Descubrir.
+    }
   }
 
   Future<void> _onPublishGame() async {
@@ -97,18 +133,30 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   // ---------------------------------------------------------
   Future<void> _loadFeaturedGame() async {
     try {
-      final posts = await PostService.getPosts(
+      var posts = await PostService.getPosts(
         type: 'GAME_SHOWCASE',
         sort: 'latest',
         limit: 1,
       );
+      if (posts.isEmpty) {
+        posts = await PostService.getPosts(
+          type: 'BETA',
+          sort: 'latest',
+          limit: 1,
+        );
+      }
+      if (posts.isEmpty) {
+        posts = await PostService.getPosts(
+          sort: 'trending',
+          limit: 1,
+        );
+      }
       if (posts.isNotEmpty) {
         setState(() => _featuredGame = posts.first);
       } else {
         setState(() => _featuredGame = null);
       }
     } catch (_) {
-      // Sin backend no inventamos un juego: la sección simplemente no se pinta.
       if (mounted) setState(() => _featuredGame = null);
     }
   }
@@ -122,26 +170,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       // Usamos el servicio de posts con sort=trending.
       // El endpoint dedicado /discover/trending aún no existe en backend,
       // así que traemos los posts más populares y los mostramos como "trending".
-      final posts = await PostService.getPosts(sort: 'trending', limit: 8);
-      // Ordenar por likes (más populares primero) y mapear a TrendingGame.
-      final sorted = [...posts]
+      final posts = await PostService.getPosts(sort: 'trending', limit: 14);
+      // Solo juegos: showcases, betas o publicaciones con portada. Así no se
+      // cuelan encuestas ni posts de texto en "Juegos en tendencia".
+      final games = posts
+          .where(
+            (p) =>
+                p.type == PostType.beta ||
+                p.type == PostType.game_showcase,
+          )
+          .toList();
+      final sorted = [...games]
         ..sort((a, b) => b.likesCount.compareTo(a.likesCount));
       setState(() {
         _trendingGames = sorted.map((p) {
           final cover =
               p.game?.coverUrl ??
               (p.media.isNotEmpty ? p.media.first.url : null);
-          final label =
+          // "Titulo · Genero · vX" es el formato de los showcases.
+          final firstLine = p.content.trim().split('\n').first;
+          final parts = firstLine
+              .split('·')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+          final label = p.beta?.title ??
               p.game?.title ??
-              (p.content.isNotEmpty
-                  ? (p.content.length > 30
-                        ? '${p.content.substring(0, 30)}...'
-                        : p.content)
-                  : 'Publicación');
+              (parts.isNotEmpty ? parts.first : 'Publicación');
           return TrendingGame(
             id: p.id,
             name: label,
-            version: p.game?.version ?? '',
+            version: p.beta?.version ?? p.game?.version ?? '',
             views: compactNumber(p.likesCount),
             isTrending: true,
             imageUrl: cover ?? '',
@@ -245,7 +304,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   void _onFilterChanged(DiscoverFilter filter) {
     if (filter != _activeFilter) {
-      setState(() => _activeFilter = filter);
+      setState(() {
+        _activeFilter = filter;
+        _feedExpanded = false;
+      });
       _loadPosts();
     }
   }
@@ -255,44 +317,57 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return Scaffold(
       backgroundColor: DevColors.background,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // 1. JUEGO DESTACADO (Hero)
-            // Si la API no tiene showcases publicados, se muestra el hero con
-            // video y un estado honesto en vez de dejar un hueco vacío.
-            SliverToBoxAdapter(
-              child: _featuredGame != null
-                  ? _FeaturedGameHero(
-                      game: _featuredGame!,
-                      onDetailTap: widget.onGameTap,
-                      onPlayTap: () => _openGame(_featuredGame!),
-                      onBetaTap: () => _openBeta(_featuredGame!),
-                    )
-                  : _DiscoverHeroFallback(onCreateTap: _onPublishGame),
-            ),
+        child: RefreshIndicator(
+          onRefresh: _loadAll,
+          color: DevColors.accentCyan,
+          backgroundColor: DevColors.card,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // 1. BANNER — título de la sección + accesos rápidos.
+              SliverToBoxAdapter(
+                child: _DiscoverBanner(
+                  featured: _featuredGame,
+                  onCreateTap: _onPublishGame,
+                  onSearchTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const SearchScreen(),
+                    ),
+                  ),
+                  onFeaturedTap: () {
+                    final game = _featuredGame;
+                    if (game != null) _openGame(game);
+                  },
+                ),
+              ),
 
-            // 2. FEED DE PUBLICACIONES (integrado en el scroll principal)
-            // El header va en su propio SliverToBoxAdapter y la lista se
-            // agrega como sliver real: un SliverList nunca puede vivir
-            // dentro de un Column (RenderFlex).
-            SliverToBoxAdapter(child: _buildFeedHeader()),
-            ..._buildFeedSlivers(),
+              // 2. JUEGOS EN TENDENCIA
+              if (_trendingLoading || _trendingGames.isNotEmpty)
+                SliverToBoxAdapter(child: _buildTrendingSection()),
 
-            // 3. JUEGOS EN TENDENCIA
-            if (_trendingGames.isNotEmpty)
-              SliverToBoxAdapter(child: _buildTrendingSection()),
+              // 3. LABORATORIO DE BETAS (lo que se puede probar ya)
+              if (_betaLoading || _betaGames.isNotEmpty)
+                SliverToBoxAdapter(child: _buildBetaLabSection()),
 
-            // 4. EN DESARROLLO
-            if (_devGames.isNotEmpty)
-              SliverToBoxAdapter(child: _buildDevSection()),
+              // 4. EN DESARROLLO (dev logs)
+              if (_devLoading || _devGames.isNotEmpty)
+                SliverToBoxAdapter(child: _buildDevSection()),
 
-            // 5. LABORATORIO DE BETAS
-            if (_betaGames.isNotEmpty)
-              SliverToBoxAdapter(child: _buildBetaLabSection()),
+              // 5. DEVS PARA SEGUIR
+              if (_recommendedUsers.isNotEmpty)
+                SliverToBoxAdapter(child: _buildDevsSection()),
 
-            // Espacio final
-            const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
-          ],
+              // 6. TEMAS POPULARES
+              if (_popularTags.isNotEmpty)
+                SliverToBoxAdapter(child: _buildTagsSection()),
+
+              // 7. FEED — al final, para que Descubrir sea descubrir.
+              SliverToBoxAdapter(child: _buildFeedHeader()),
+              ..._buildFeedSlivers(),
+
+              const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+            ],
+          ),
         ),
       ),
     );
@@ -350,28 +425,62 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ),
       ];
     }
+    final collapsed =
+        _activeFilter == DiscoverFilter.todo && !_feedExpanded;
+    final visible = collapsed
+        ? _posts.take(_feedPreviewCount).toList()
+        : _posts;
+    final hidden = _posts.length - visible.length;
+
     return [
       SliverList.separated(
         key: _feedKey,
-        itemCount: _posts.length,
+        itemCount: visible.length,
         separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (_, i) => Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
           child: i == 0
               ? Sheen(
                   child: PostCard(
-                    post: _posts[i],
+                    post: visible[i],
                     onGameTap: widget.onGameTap,
-                    onProfileTap: () => _openAuthor(_posts[i]),
+                    onProfileTap: () => _openAuthor(visible[i]),
                   ),
                 )
               : PostCard(
-                  post: _posts[i],
+                  post: visible[i],
                   onGameTap: widget.onGameTap,
-                  onProfileTap: () => _openAuthor(_posts[i]),
+                  onProfileTap: () => _openAuthor(visible[i]),
                 ),
         ),
       ),
+      if (hidden > 0)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => setState(() => _feedExpanded = true),
+                icon: const Icon(Icons.expand_more_rounded, size: 18),
+                label: Text(
+                  'Ver $hidden publicaciones más',
+                  style: DevTheme.body(size: 13, w: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: DevColors.primary,
+                  side: BorderSide(
+                    color: DevColors.primary.withValues(alpha: 0.45),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
     ];
   }
 
@@ -474,6 +583,119 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
         ),
       ],
+    );
+  }
+
+  // ===== SECCIÓN: DEVS PARA SEGUIR =====
+  Widget _buildDevsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(
+          icon: Icons.people_alt_rounded,
+          color: DevColors.accentCyan,
+          title: 'Devs para seguir',
+        ),
+        SizedBox(
+          height: 128,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: _recommendedUsers.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => _DevUserCard(
+              user: _recommendedUsers[i],
+              onTap: () => _openDev(_recommendedUsers[i]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===== SECCIÓN: TEMAS POPULARES =====
+  Widget _buildTagsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(
+          icon: Icons.tag_rounded,
+          color: DevColors.goldSoft,
+          title: 'Temas populares',
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 2),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final tag in _popularTags)
+                _TagChip(
+                  tag: tag,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SearchScreen(initialQuery: tag.tag),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Cabecera común de sección (icono + título, opcionalmente con acción).
+  Widget _sectionHeader({
+    required IconData icon,
+    required String title,
+    required Color color,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 17, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: DevTheme.display(size: 19),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (actionLabel != null && onAction != null)
+            TextButton.icon(
+              onPressed: onAction,
+              icon: const Icon(Icons.chevron_right_rounded, size: 16),
+              label: Text(
+                actionLabel,
+                style: DevTheme.body(
+                  size: 12,
+                  w: FontWeight.w600,
+                  color: DevColors.primary,
+                ),
+              ),
+              style: TextButton.styleFrom(foregroundColor: DevColors.primary),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _openDev(_DiscoverUser user) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)),
     );
   }
 
@@ -625,7 +847,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 onAction: () => _onFilterChanged(DiscoverFilter.todo),
               )
             : SizedBox(
-                height: 240,
+                height: 104,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -682,8 +904,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       ),
     );
   }
-
-  Future<void> _openBeta(Post post) => _joinBeta(post);
 
   Future<void> _joinBeta(Post post) async {
     if (_joiningBeta) return;
@@ -836,6 +1056,25 @@ class _TrendingGameCard extends StatelessWidget {
 
   const _TrendingGameCard({required this.game, required this.onTap});
 
+  Widget _trendingFallback() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF152238), Color(0xFF2A1B4A)],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.sports_esports_rounded,
+          size: 30,
+          color: DevColors.accentCyan.withValues(alpha: 0.45),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -858,26 +1097,12 @@ class _TrendingGameCard extends StatelessWidget {
                   top: Radius.circular(12),
                 ),
                 child: game.imageUrl.isEmpty
-                    ? Container(
-                        color: DevColors.muted,
-                        child: Icon(
-                          Icons.image,
-                          color: DevColors.mutedFg,
-                          size: 32,
-                        ),
-                      )
+                    ? _trendingFallback()
                     : Image.network(
                         game.imageUrl,
                         fit: BoxFit.cover,
                         width: double.infinity,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: DevColors.muted,
-                          child: Icon(
-                            Icons.image,
-                            color: DevColors.mutedFg,
-                            size: 32,
-                          ),
-                        ),
+                        errorBuilder: (_, __, ___) => _trendingFallback(),
                       ),
               ),
             ),
@@ -910,369 +1135,313 @@ class _TrendingGameCard extends StatelessWidget {
 // ===== WIDGETS AUXILIARES =====
 
 /// Juego destacado (Hero grande)
-class _FeaturedGameHero extends StatelessWidget {
-  final Post game;
-  final void Function(String)? onDetailTap;
-  final VoidCallback onPlayTap;
-  final VoidCallback onBetaTap;
+/// Banner compacto de la pantalla Descubrir.
+///
+/// Antes el hero ocupaba media pantalla y mostraba el juego destacado tan
+/// grande que parecia que estabas dentro de una ficha de juego. Ahora es una
+/// banda de ~200 px con el titulo de la seccion, un resumen y dos accesos,
+/// mas una tarjeta pequena con el destacado.
+class _DiscoverBanner extends StatelessWidget {
+  final Post? featured;
+  final VoidCallback onCreateTap;
+  final VoidCallback onSearchTap;
+  final VoidCallback onFeaturedTap;
 
-  const _FeaturedGameHero({
-    required this.game,
-    this.onDetailTap,
-    required this.onPlayTap,
-    required this.onBetaTap,
+  const _DiscoverBanner({
+    required this.featured,
+    required this.onCreateTap,
+    required this.onSearchTap,
+    required this.onFeaturedTap,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [const Color(0xFF0F172A), const Color(0xFF060B14)],
-        ),
-        border: Border.all(color: DevColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Video 3D en loop como base del hero (mismo asset que Inicio).
-          Positioned.fill(
-            child: HeroVideo(
-              videoAsset: 'assets/videos/hero_loop_crystal_loop',
-              posterAsset: 'assets/videos/hero_loop_crystal_loop_poster',
-              autoPlay: true,
-              mute: true,
-              shapeOpacity: 0.35,
-              shapeStyle: Hero3DStyle.home,
-              enablePointerInterceptor: false,
-              scrimOpacity: 0.20,
-            ),
-          ),
-          // Fondo con imagen del juego (real, de la API) sobre el video.
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  game.media.isNotEmpty && game.media.first.url.isNotEmpty
-                      ? Opacity(
-                          opacity: 0.72,
-                          child: Image.network(
-                            game.media.first.url,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Container(color: DevColors.card),
-                  // Gradiente overlay
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          const Color(0xFF060B14).withValues(alpha: 0.9),
-                        ],
-                        stops: const [0.6, 1.0],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Contenido
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // Badge estado
-                if (game.game?.status != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _statusColor(game.game!.status!)
-                          .withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _statusColor(game.game!.status!),
-                      ),
-                    ),
-                    child: Text(
-                      game.game!.status!.toUpperCase(),
-                      style: DevTheme.labelCaps(
-                        size: 10,
-                        color: _statusColor(game.game!.status!),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                // Título
-                Text(
-                  game.game?.title ?? _postLabel(game, max: 50),
-                  style: DevTheme.display(size: 32, w: FontWeight.w800),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                // Desarrollador + género
-                if (game.game != null) ...[
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.person_rounded,
-                        size: 14,
-                        color: DevColors.mutedFg,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        game.game!.developer ?? '',
-                        style: DevTheme.bodySecondary(size: 13),
-                      ),
-                      if (game.game!.genre != null) ...[
-                        const SizedBox(width: 12),
-                        Icon(
-                          Icons.category_rounded,
-                          size: 14,
-                          color: DevColors.mutedFg,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          game.game!.genre!,
-                          style: DevTheme.bodySecondary(size: 13),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 16),
-                // Botones de acción
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: onPlayTap,
-                        icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                        label: const Text('Jugar ahora'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: onBetaTap,
-                        icon: const Icon(Icons.science_rounded, size: 20),
-                        label: const Text('Unirse a beta'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: DevColors.primary,
-                          side: const BorderSide(
-                            color: DevColors.primary,
-                            width: 1.5,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Detalles
-                if (game.game != null) ...[
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 8,
-                    children: [
-                      if (game.game!.version != null)
-                        _DetailChip(
-                          icon: Icons.tag_rounded,
-                          label: game.game!.version!,
-                        ),
-                      if (game.game!.platform != null)
-                        _DetailChip(
-                          icon: Icons.computer_rounded,
-                          label: game.game!.platform!,
-                        ),
-                      _DetailChip(
-                        icon: Icons.visibility_rounded,
-                        label: '${compactNumber(game.viewsCount)} vistas',
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  String get _featuredTitle {
+    final post = featured;
+    if (post == null) return '';
+    final beta = post.beta;
+    if (beta != null && beta.title.trim().isNotEmpty) return beta.title.trim();
+    final firstLine = post.content.trim().split('\n').first;
+    final parts = firstLine
+        .split('·')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    return parts.isNotEmpty ? parts.first : 'Juego destacado';
   }
-
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'released':
-        return DevColors.olive;
-      case 'beta':
-        return DevColors.primary;
-      case 'alpha':
-        return DevColors.amber;
-      case 'prototype':
-        return DevColors.gold;
-      default:
-        return DevColors.mutedFg;
-    }
-  }
-}
-
-/// Hero de respaldo de Descubrir.
-///
-/// Cuando la API todavía no tiene publicaciones de tipo `GAME_SHOWCASE`, el
-/// hero de juego destacado no puede mostrarse. En vez de dejar un hueco en la
-/// parte superior de la vista, se muestra el mismo fondo de video con un
-/// mensaje honesto y una acción útil.
-class _DiscoverHeroFallback extends StatelessWidget {
-  final VoidCallback? onCreateTap;
-
-  const _DiscoverHeroFallback({this.onCreateTap});
 
   @override
   Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).width >= 860;
+
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+      height: wide ? 190 : 214,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0F172A), Color(0xFF060B14)],
+          colors: [Color(0xFF0F172A), Color(0xFF081221)],
         ),
         border: Border.all(color: DevColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          // Mismo video 3D en loop que el resto de heroes.
           const Positioned.fill(
-            child: HeroVideo(
-              videoAsset: 'assets/videos/hero_loop_crystal_loop',
-              posterAsset: 'assets/videos/hero_loop_crystal_loop_poster',
-              autoPlay: true,
-              mute: true,
-              shapeOpacity: 0.35,
-              shapeStyle: Hero3DStyle.home,
-              enablePointerInterceptor: false,
-              scrimOpacity: 0.20,
+            child: IgnorePointer(
+              child: HeroVideo(
+                videoAsset: 'assets/videos/hero_loop_crystal_loop',
+                posterAsset: 'assets/videos/hero_loop_crystal_loop_poster',
+                shapeStyle: Hero3DStyle.discover,
+                shapeOpacity: 0.20,
+                scrimOpacity: 0.58,
+                enablePointerInterceptor: false,
+              ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: DevColors.accentCyan.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: DevColors.accentCyan.withValues(alpha: 0.30),
-                    ),
-                  ),
-                  child: Text(
-                    'DESCUBRIR',
-                    style: DevTheme.labelCaps(
-                      size: 10,
-                      color: DevColors.accentCyan,
-                    ).copyWith(letterSpacing: 1.6),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Aún no hay juegos destacados',
-                  style: DevTheme.display(size: 26, w: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Publica un showcase y aparecerá aquí como juego destacado.',
-                  style: DevTheme.bodySecondary(size: 13),
-                ),
-                const SizedBox(height: 16),
-                if (onCreateTap != null)
-                  _GlowGradientButton(
-                    onTap: onCreateTap,
-                    icon: Icons.add_rounded,
-                    label: 'Publicar un juego',
-                    colors: const [Color(0xFFFF5E00), Color(0xFFFF8700)],
-                    glow: const Color(0xFFFF5E00),
-                  ),
-              ],
+            padding: EdgeInsets.fromLTRB(
+              wide ? 24 : 18,
+              16,
+              wide ? 20 : 18,
+              16,
             ),
+            child: wide
+                ? Row(
+                    children: [
+                      Expanded(child: _copy(context)),
+                      if (featured != null) ...[
+                        const SizedBox(width: 20),
+                        _featuredMini(context),
+                      ],
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [_copy(context)],
+                  ),
           ),
         ],
       ),
     );
   }
-}
 
-class _DetailChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
+  Widget _copy(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: DevColors.accentCyan.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(
+                  color: DevColors.accentCyan.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Text(
+                'DESCUBRIR',
+                style: DevTheme.labelCaps(
+                  size: 8.5,
+                  color: DevColors.accentCyan,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 9),
+        Text(
+          'Descubre tu próximo juego',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: DevTheme.display(size: 26, w: FontWeight.w800).copyWith(
+            height: 1.1,
+            letterSpacing: -0.6,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'Betas abiertas, juegos en desarrollo y devs de la comunidad.',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: DevTheme.body(size: 12.5, color: DevColors.mutedFg),
+        ),
+        const SizedBox(height: 13),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _bannerButton(
+              icon: Icons.add_rounded,
+              label: 'Publicar juego',
+              onTap: onCreateTap,
+              primary: true,
+            ),
+            _bannerButton(
+              icon: Icons.search_rounded,
+              label: 'Buscar juegos',
+              onTap: onSearchTap,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-  const _DetailChip({required this.icon, required this.label});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: DevColors.muted.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: DevColors.border),
+  Widget _bannerButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool primary = false,
+  }) {
+    return SizedBox(
+      height: 34,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 13),
+            decoration: BoxDecoration(
+              gradient: primary
+                  ? const LinearGradient(
+                      colors: [Color(0xFF00C8E0), Color(0xFF3B82F6)],
+                    )
+                  : null,
+              color: primary
+                  ? null
+                  : DevColors.cardRaised.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: primary
+                    ? Colors.transparent
+                    : DevColors.accentCyan.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 15, color: Colors.white),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: DevTheme.body(
+                    size: 12,
+                    w: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: DevColors.mutedFg),
-          const SizedBox(width: 4),
-          Text(label, style: DevTheme.bodySecondary(size: 11)),
-        ],
+    );
+  }
+
+  /// Tarjeta pequena con el juego destacado (solo escritorio).
+  Widget _featuredMini(BuildContext context) {
+    final post = featured!;
+    final cover = post.media.isNotEmpty ? post.media.first.url : '';
+    final version = post.beta?.version ?? post.game?.version ?? '';
+
+    return SizedBox(
+      width: 262,
+      height: 78,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onFeaturedTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: DevColors.card.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: DevColors.accentCyan.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(9),
+                  child: SizedBox(
+                    width: 58,
+                    height: 58,
+                    child: cover.isEmpty
+                        ? _bannerFallback()
+                        : Image.network(
+                            cover,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _bannerFallback(),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'DESTACADO',
+                        style: DevTheme.labelCaps(
+                          size: 8,
+                          color: DevColors.accentCyan,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _featuredTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: DevTheme.body(size: 13, w: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        version.isEmpty ? 'Ver ficha' : 'v$version · Ver ficha',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: DevTheme.bodySecondary(size: 10.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: DevColors.mutedFg,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bannerFallback() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF152238), Color(0xFF2A1B4A)],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.sports_esports_rounded,
+          size: 24,
+          color: DevColors.accentCyan.withValues(alpha: 0.5),
+        ),
       ),
     );
   }
@@ -1477,148 +1646,144 @@ class _BetaLabCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final beta = post.beta;
+    final isOpen = beta?.isOpen ?? false;
+    final title = beta?.title ??
+        post.game?.title ??
+        _postLabel(post, max: 28);
+    final genre = (beta?.genre ?? '').trim();
+    final version = (beta?.version ?? '').trim();
+    final meta = [
+      if (genre.isNotEmpty) genre,
+      if (version.isNotEmpty) 'v$version',
+    ].join(' · ');
+    final cover = post.media.isNotEmpty ? post.media.first.url : '';
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 280,
-        margin: const EdgeInsets.only(right: 16),
-        decoration: DevTheme.glass(radius: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        width: 272,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(10),
+        decoration: DevTheme.glass(radius: 14),
+        child: Row(
           children: [
-            // Imagen
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-                child: post.media.isNotEmpty && post.media.first.url.isNotEmpty
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 62,
+                height: 62,
+                child: cover.isNotEmpty
                     ? Image.network(
-                        post.media.first.url,
+                        cover,
                         fit: BoxFit.cover,
-                        width: double.infinity,
+                        errorBuilder: (_, _, _) => _coverFallback(),
                       )
-                    : Container(
-                        color: DevColors.muted,
-                        child: Icon(
-                          Icons.science_rounded,
-                          size: 32,
-                          color: DevColors.mutedFg,
-                        ),
-                      ),
+                    : _coverFallback(),
               ),
             ),
-            // Info
-            Padding(
-              padding: const EdgeInsets.all(14),
+            const SizedBox(width: 10),
+            Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: DevTheme.body(size: 13.5, w: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
+                          horizontal: 6,
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: beta?.isOpen == true
-                              ? DevColors.primary.withValues(alpha: 0.15)
+                          color: isOpen
+                              ? DevColors.primary.withValues(alpha: 0.16)
                               : DevColors.muted,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
-                          beta?.isOpen == true ? 'ABIERTA' : 'CERRADA',
+                          isOpen ? 'ABIERTA' : 'CERRADA',
                           style: DevTheme.labelCaps(
-                            size: 9,
-                            color: beta?.isOpen == true
+                            size: 8.5,
+                            color: isOpen
                                 ? DevColors.primary
                                 : DevColors.mutedFg,
                           ),
                         ),
                       ),
-                      const Spacer(),
-                      if (beta?.version != null)
-                        Text(
-                          'v${beta!.version}',
-                          style: DevTheme.bodySecondary(
-                            size: 10,
-                            color: DevColors.gold,
-                          ),
-                        ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 3),
                   Text(
-                    post.game?.title ?? _postLabel(post, max: 30),
-                    style: DevTheme.body(size: 15, w: FontWeight.w700),
+                    meta,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: DevTheme.bodySecondary(size: 11),
                   ),
-                  const SizedBox(height: 4),
-                  if (post.game?.developer != null)
-                    Text(
-                      'por ${post.game!.developer}',
-                      style: DevTheme.bodySecondary(size: 11),
-                    ),
-                  const SizedBox(height: 10),
-                  if (beta != null) ...[
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.people_rounded,
-                          size: 13,
-                          color: DevColors.mutedFg,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${beta.testersCount}/${beta.maxTesters} testers',
-                          style: DevTheme.bodySecondary(size: 11),
-                        ),
-                        const SizedBox(width: 12),
-                        Icon(
-                          Icons.download_rounded,
-                          size: 13,
-                          color: DevColors.mutedFg,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${beta.downloads} descargas',
-                          style: DevTheme.bodySecondary(size: 11),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // Botón unirse
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: onJoinTap,
-                        icon: const Icon(Icons.science_rounded, size: 18),
-                        label: Text(
-                          beta.isOpen ? 'Unirse a la beta' : 'Beta cerrada',
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: beta.isOpen
-                              ? DevColors.primary
-                              : DevColors.muted,
-                          foregroundColor: beta.isOpen
-                              ? Colors.white
-                              : DevColors.mutedFg,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.download_rounded,
+                        size: 12,
+                        color: DevColors.mutedFg,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${beta?.downloads ?? 0}',
+                        style: DevTheme.bodySecondary(size: 11),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        height: 26,
+                        child: TextButton(
+                          onPressed: isOpen ? onJoinTap : null,
+                          style: TextButton.styleFrom(
+                            backgroundColor: isOpen
+                                ? DevColors.primary
+                                : DevColors.muted,
+                            foregroundColor: isOpen
+                                ? Colors.white
+                                : DevColors.mutedFg,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            isOpen ? 'Unirse' : 'Cerrada',
+                            style: DevTheme.body(size: 11, w: FontWeight.w700),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _coverFallback() {
+    return Container(
+      color: DevColors.muted,
+      child: const Icon(
+        Icons.science_rounded,
+        size: 22,
+        color: DevColors.mutedFg,
       ),
     );
   }
@@ -1970,4 +2135,191 @@ class _GlowGradientButtonState extends State<_GlowGradientButton> {
       ),
     );
   }
+}
+
+// ===== WIDGETS: DESCUBRIR =====
+
+/// Tarjeta de un dev recomendado.
+class _DevUserCard extends StatelessWidget {
+  final _DiscoverUser user;
+  final VoidCallback onTap;
+
+  const _DevUserCard({required this.user, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = user.fullName.isNotEmpty ? user.fullName : user.username;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          width: 236,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: DevColors.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: DevColors.border),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              UserAvatar(
+                username: user.username,
+                avatar: user.avatar,
+                size: 44,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: DevTheme.body(size: 13, w: FontWeight.w700),
+                    ),
+                    Text(
+                      '@${user.username}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: DevTheme.bodySecondary(size: 11),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      user.bio.isEmpty ? 'Dev en DevPlay' : user.bio,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: DevTheme.body(
+                        size: 11,
+                        height: 1.35,
+                        color: DevColors.mutedFg,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.people_outline_rounded,
+                          size: 11,
+                          color: DevColors.mutedFg,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${compactNumber(user.followersCount)} seguidores',
+                          style: DevTheme.bodySecondary(size: 10.5),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Chip de tema popular.
+class _TagChip extends StatelessWidget {
+  final _DiscoverTag tag;
+  final VoidCallback onTap;
+
+  const _TagChip({required this.tag, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(99),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: DevColors.card,
+            borderRadius: BorderRadius.circular(99),
+            border: Border.all(
+              color: DevColors.accentCyan.withValues(alpha: 0.18),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '#${tag.tag}',
+                style: DevTheme.body(
+                  size: 12,
+                  w: FontWeight.w600,
+                  color: DevColors.foreground,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: DevColors.accentCyan.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  '${tag.count}',
+                  style: DevTheme.body(
+                    size: 9.5,
+                    w: FontWeight.w700,
+                    color: DevColors.accentCyan,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Usuario recomendado que llega de `/discover`.
+class _DiscoverUser {
+  final String id;
+  final String username;
+  final String fullName;
+  final String bio;
+  final String? avatar;
+  final int followersCount;
+
+  const _DiscoverUser({
+    required this.id,
+    required this.username,
+    required this.fullName,
+    required this.bio,
+    required this.followersCount,
+    this.avatar,
+  });
+
+  factory _DiscoverUser.fromJson(Map<String, dynamic> json) => _DiscoverUser(
+        id: json['id'] as String? ?? '',
+        username: json['username'] as String? ?? '',
+        fullName: (json['fullName'] ?? json['full_name'] ?? '') as String,
+        bio: json['bio'] as String? ?? '',
+        avatar: json['avatar'] as String?,
+        followersCount:
+            (json['followersCount'] ?? json['followers_count'] ?? 0) as int,
+      );
+}
+
+/// Tema popular que llega de `/discover`.
+class _DiscoverTag {
+  final String tag;
+  final int count;
+
+  const _DiscoverTag({required this.tag, required this.count});
+
+  factory _DiscoverTag.fromJson(Map<String, dynamic> json) => _DiscoverTag(
+        tag: json['tag'] as String? ?? '',
+        count: (json['count'] ?? 0) as int,
+      );
 }

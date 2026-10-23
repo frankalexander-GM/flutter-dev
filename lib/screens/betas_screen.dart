@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../widgets/beta_compose_sheet.dart';
 import '../widgets/hero_3d_shapes.dart';
 import '../widgets/hero_video.dart';
+import '../widgets/share_sheet.dart';
 
 /// Vista de Betas: laboratorio de builds tempranas de la comunidad.
 class BetasScreen extends StatefulWidget {
@@ -158,7 +159,7 @@ class _BetasScreenState extends State<BetasScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => _BetaDetailsSheet(
+      builder: (ctx) => BetaDetailsSheet(
         beta: beta,
         onDownload: () {
           Navigator.of(ctx).pop();
@@ -317,10 +318,10 @@ class _BetasScreenState extends State<BetasScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final columns = constraints.maxWidth >= 1020
+                    final columns = constraints.maxWidth >= 900
                         ? 3
-                        : (constraints.maxWidth >= 660 ? 2 : 1);
-                    const gap = 14.0;
+                        : (constraints.maxWidth >= 560 ? 2 : 1);
+                    const gap = 12.0;
                     final cardWidth =
                         (constraints.maxWidth - gap * (columns - 1)) / columns;
                     return Wrap(
@@ -895,174 +896,170 @@ class _BetaCard extends StatelessWidget {
     final hasDownload =
         (beta.externalUrl != null && beta.externalUrl!.isNotEmpty) ||
         (beta.fileUrl != null && beta.fileUrl!.isNotEmpty);
+    final statusColor = betaStatusColor(beta.betaStatus);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onDetails,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: DevColors.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: DevColors.white08),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                _thumb(statusColor),
+                const SizedBox(width: 11),
+                Expanded(child: _info(statusColor)),
+                if (hasDownload) ...[
+                  const SizedBox(width: 8),
+                  _downloadButton(),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Miniatura cuadrada de 56 px: se ve la portada sin comerse la tarjeta.
+  Widget _thumb(Color statusColor) {
+    final hasCover = beta.coverImage != null && beta.coverImage!.isNotEmpty;
     return Container(
+      width: 56,
+      height: 56,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: DevColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DevColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: statusColor.withValues(alpha: 0.35)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (beta.coverImage != null && beta.coverImage!.isNotEmpty)
-                  Image.network(
-                    beta.coverImage!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _betaCoverFallback(),
-                  )
-                else
-                  _betaCoverFallback(),
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: _Pill(
-                    label: betaStatusLabel(beta.betaStatus),
-                    color: betaStatusColor(beta.betaStatus),
-                  ),
-                ),
-                if (beta.version != null && beta.version!.isNotEmpty)
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: DevColors.background.withValues(alpha: 0.82),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: DevColors.border),
-                      ),
-                      child: Text(
-                        beta.version!,
-                        style: DevTheme.mono(
-                          size: 11,
-                          color: DevColors.goldSoft,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+      child: hasCover
+          ? Image.network(
+              beta.coverImage!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _betaCoverFallback(),
+            )
+          : _betaCoverFallback(),
+    );
+  }
+
+  Widget _info(Color statusColor) {
+    // En la tarjeta manda el estado + version; el genero vive en el detalle.
+    final meta = (beta.version != null && beta.version!.isNotEmpty)
+        ? 'v${beta.version}'
+        : (beta.genre ?? '');
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          beta.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: DevTheme.body(size: 13.5, w: FontWeight.w700),
+        ),
+        const SizedBox(height: 3),
+        Row(
+          children: [
+            _statusPill(statusColor),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                meta,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: DevTheme.bodySecondary(size: 11),
+              ),
             ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.download_rounded,
+              size: 12,
+              color: DevColors.disabled,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              '${beta.downloads}',
+              style: DevTheme.bodySecondary(size: 11),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          beta.description,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: DevTheme.body(
+            size: 11.5,
+            color: DevColors.mutedFg.withValues(alpha: 0.85),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  beta.title,
-                  style: DevTheme.display(size: 16.5, w: FontWeight.w700),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (beta.genre != null && beta.genre!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(beta.genre!, style: DevTheme.bodySecondary(size: 11.5)),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  beta.description,
-                  style: DevTheme.body(
-                    size: 12.5,
-                    color: DevColors.mutedFg,
-                    height: 1.45,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(
+        ),
+      ],
+    );
+  }
+
+  Widget _statusPill(Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Text(
+        betaStatusLabel(beta.betaStatus),
+        style: DevTheme.body(size: 9.5, w: FontWeight.w700, color: color),
+      ),
+    );
+  }
+
+  Widget _downloadButton() {
+    return Tooltip(
+      message: busy ? 'Descargando...' : 'Descargar beta',
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: Material(
+          color: DevColors.primary.withValues(alpha: busy ? 0.35 : 1),
+          borderRadius: BorderRadius.circular(10),
+          child: InkWell(
+            onTap: busy ? null : onDownload,
+            borderRadius: BorderRadius.circular(10),
+            child: Center(
+              child: busy
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(
                       Icons.download_rounded,
-                      size: 15,
-                      color: DevColors.mutedFg,
+                      size: 18,
+                      color: Colors.white,
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      '${beta.downloads}',
-                      style: DevTheme.bodySecondary(size: 12),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: onDetails,
-                      style: TextButton.styleFrom(
-                        foregroundColor: DevColors.mutedFg,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                      ),
-                      child: const Text(
-                        'Detalles',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    if (hasDownload) ...[
-                      const SizedBox(width: 4),
-                      ElevatedButton(
-                        onPressed: busy ? null : onDownload,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: DevColors.primary,
-                          foregroundColor: DevColors.primaryFg,
-                          disabledBackgroundColor: DevColors.primary.withValues(
-                            alpha: 0.4,
-                          ),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: busy
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Descargar',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _BetaDetailsSheet extends StatelessWidget {
+class BetaDetailsSheet extends StatelessWidget {
   final Beta beta;
   final VoidCallback onDownload;
 
-  const _BetaDetailsSheet({required this.beta, required this.onDownload});
+  const BetaDetailsSheet({required this.beta, required this.onDownload});
 
   bool get _hasExternal => (beta.externalUrl ?? '').trim().isNotEmpty;
   bool get _hasFile => (beta.fileUrl ?? '').trim().isNotEmpty;
@@ -1071,16 +1068,16 @@ class _BetaDetailsSheet extends StatelessWidget {
       ? beta.externalUrl!.trim()
       : (_hasFile ? beta.fileUrl!.trim() : null);
 
-  Future<void> _copy(BuildContext context, String url) async {
-    await Clipboard.setData(ClipboardData(text: url));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Enlace copiado')));
-  }
-
   @override
   Widget build(BuildContext context) {
-    final cover = beta.coverImage?.trim() ?? '';
+    // `coverImage` guarda el icono cuadrado (tarjetas); para el banner ancho
+    // preferimos la primera captura 16:9 si existe.
+    final wideShot = beta.screenshots
+        .map((s) => s.trim())
+        .firstWhere(_isHttpUrl, orElse: () => '');
+    final cover = wideShot.isNotEmpty
+        ? wideShot
+        : (beta.coverImage?.trim() ?? '');
     final url = _link;
     final screenshots = beta.screenshots
         .map((screenshot) => screenshot.trim())
@@ -1340,6 +1337,93 @@ class _BetaDetailsSheet extends StatelessWidget {
     );
   }
 
+  Future<void> _shareBeta(BuildContext context, String? url) async {
+    final link = (url ?? '').trim();
+    final version = (beta.version ?? '').trim();
+    final message = StringBuffer()
+      ..writeln(
+        'Prueba ${beta.title}'
+        '${version.isNotEmpty ? ' v$version' : ''} en DevPlay',
+      )
+      ..writeln(betaStatusLabel(beta.betaStatus))
+      ..writeln()
+      ..write(beta.description);
+
+    final shot = beta.screenshots.isNotEmpty
+        ? beta.screenshots.first.trim()
+        : (beta.coverImage ?? '').trim();
+
+    final result = await showShareSheet(
+      context,
+      payload: SharePayload(
+        title: 'Compartir beta',
+        subtitle: beta.title,
+        message: message.toString().trim(),
+        link: link,
+        mediaUrl: shot,
+        preview: _sharePreview(shot),
+      ),
+    );
+    if (result != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result)),
+      );
+    }
+  }
+
+  Widget _sharePreview(String image) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: DevColors.cardRaised.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: DevColors.accentCyan.withValues(alpha: 0.14),
+        ),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(9),
+            child: SizedBox(
+              width: 58,
+              height: 58,
+              child: image.isEmpty
+                  ? _betaCoverFallback()
+                  : Image.network(
+                      image,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _betaCoverFallback(),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  beta.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DevTheme.body(size: 13.5, w: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${betaStatusLabel(beta.betaStatus)}'
+                  '${(beta.version ?? '').isNotEmpty ? ' \u00b7 v${beta.version}' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DevTheme.bodySecondary(size: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _downloadActions(BuildContext context, String? url) {
     final download = SizedBox(
       width: double.infinity,
@@ -1358,28 +1442,25 @@ class _BetaDetailsSheet extends StatelessWidget {
         ),
       ),
     );
-    final copy = url == null
-        ? null
-        : SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _copy(context, url),
-              icon: const Icon(Icons.link_rounded, size: 18),
-              label: const Text('Copiar enlace'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: DevColors.goldSoft,
-                side: const BorderSide(color: DevColors.border),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(11),
-                ),
-              ),
-            ),
-          );
+    final copy = SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _shareBeta(context, url),
+        icon: const Icon(Icons.ios_share_rounded, size: 18),
+        label: const Text('Compartir'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: DevColors.goldSoft,
+          side: const BorderSide(color: DevColors.border),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(11),
+          ),
+        ),
+      ),
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (copy == null) return download;
         if (constraints.maxWidth < 480) {
           return Column(children: [download, const SizedBox(height: 8), copy]);
         }

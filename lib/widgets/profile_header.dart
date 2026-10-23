@@ -75,7 +75,7 @@ class ProfileHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (wide && isOwn)
+              if (wide)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -112,7 +112,7 @@ class ProfileHeader extends StatelessWidget {
                 onPosts: onPosts,
                 onGames: onGames,
               ),
-              if (!(wide && isOwn)) ...[
+              if (!wide) ...[
                 const SizedBox(height: 16),
                 _Actions(
                   profile: profile,
@@ -427,7 +427,9 @@ class _MetaRow extends StatelessWidget {
         label: _joinDate(profile.createdAt),
       ),
     );
-    if (isOwn) {
+    // Seguidores, siguiendo, juegos y posts son datos públicos: se muestran
+    // igual en el perfil propio y en el de otro usuario.
+    {
       items.add(
         _MetaChip(
           icon: Icons.people_outline_rounded,

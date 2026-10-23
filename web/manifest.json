@@ -1,23 +1,39 @@
 {
-    "name": "devplay",
-    "short_name": "devplay",
-    "start_url": ".",
+    "name": "DevPlay — Comunidad de devs y betas",
+    "short_name": "DevPlay",
+    "description": "Publica avances de tu juego, comparte betas y encuentra testers en una comunidad hecha para desarrolladores.",
+    "id": "/",
+    "start_url": "./",
+    "scope": "./",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "display_override": [
+        "standalone",
+        "minimal-ui"
+    ],
+    "orientation": "any",
+    "background_color": "#060B14",
+    "theme_color": "#060B14",
+    "lang": "es",
+    "dir": "ltr",
+    "categories": [
+        "games",
+        "social",
+        "developer",
+        "entertainment"
+    ],
     "prefer_related_applications": false,
     "icons": [
         {
             "src": "icons/Icon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-maskable-192.png",

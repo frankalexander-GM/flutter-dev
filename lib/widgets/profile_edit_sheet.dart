@@ -642,7 +642,6 @@ class _TagEditor extends StatelessWidget {
 
   static const Map<String, List<String>> categories = {
     'Desarrollo': [
-      'Flutter',
       'Unity',
       'Godot',
       'Unreal Engine',

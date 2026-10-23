@@ -10,6 +10,7 @@ import 'avatar.dart';
 import 'comments_sheet.dart';
 import 'post_poll.dart';
 import 'report_dialog.dart';
+import 'share_sheet.dart';
 
 /// Tarjeta de publicación de DevPlay.
 ///
@@ -123,17 +124,73 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   }
 
   Future<void> _share() async {
-    final username = widget.post.author?.username ?? 'DevPlay';
-    final content = widget.post.content.trim();
+    final post = widget.post;
+    final username = post.author?.username ?? 'DevPlay';
     final link = DevLink.profileUrl(username);
-    final text = content.isEmpty
-        ? 'Mira esta publicación de @$username en DevPlay\n$link'
-        : '$content\n\n— @$username en DevPlay\n$link';
-    await Clipboard.setData(ClipboardData(text: text));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Publicación copiada al portapapeles')),
+    final beta = post.beta;
+
+    // Título y encabezado según el tipo de contenido.
+    final String title;
+    switch (post.type) {
+      case PostType.beta:
+        title = 'Compartir beta';
+      case PostType.poll:
+        title = 'Compartir encuesta';
+      case PostType.game_showcase:
+        title = 'Compartir juego';
+      case PostType.dev_log:
+        title = 'Compartir bitácora';
+      default:
+        title = 'Compartir publicación';
+    }
+
+    final body = StringBuffer();
+    if (post.type == PostType.beta && (beta?.title ?? '').isNotEmpty) {
+      body.writeln(
+        '${beta!.title}'
+        '${(beta.version ?? '').isNotEmpty ? ' · v${beta.version}' : ''}',
+      );
+      if ((beta.genre ?? '').isNotEmpty) body.writeln(beta.genre);
+      body.writeln();
+    }
+    final content = post.content.trim();
+    body.write(
+      content.isEmpty ? 'Mira esta publicación de @$username' : content,
     );
+
+    // Encuestas: se añaden las opciones para que el texto tenga sentido.
+    if (post.type == PostType.poll) {
+      try {
+        final poll = await PostService.getPoll(post.id);
+        if (poll != null && poll.options.isNotEmpty) {
+          body.writeln();
+          for (final option in poll.options) {
+            body.writeln('• ${option.text}');
+          }
+        }
+      } catch (_) {
+        // Sin opciones se comparte igual la pregunta.
+      }
+    }
+
+    if (!mounted) return;
+    final media = post.media.isNotEmpty ? post.media.first : null;
+    final message = await showShareSheet(
+      context,
+      payload: SharePayload(
+        title: title,
+        subtitle: '@$username',
+        message: body.toString().trim(),
+        link: link,
+        mediaUrl: media?.url,
+        mediaIsVideo: media?.kind == 'video',
+      ),
+    );
+    if (message != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
   }
 
   /// Guarda o quita la publicación de la colección privada del visitante
@@ -217,7 +274,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         ? post.media.first.url
         : post.game?.coverUrl;
 
-    return Container(
+    final card = Container(
       decoration: BoxDecoration(
         color: compact ? DevColors.cardRaised : DevColors.card,
         borderRadius: BorderRadius.circular(16),
@@ -237,45 +294,52 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
           // Atribución: si es un repost, se muestra de quién es el original.
           if (post.originalPost != null) _buildRepostAttribution(),
           if (cover != null)
-            AspectRatio(
-              aspectRatio: 16 / 9,
+            SizedBox(
+              height: compact ? 148 : 208,
+              width: double.infinity,
               child: Image.network(
                 cover,
                 fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
                 width: double.infinity,
                 errorBuilder: (_, _, _) => Container(
                   color: DevColors.muted,
                   child: Icon(
                     Icons.image_rounded,
                     color: DevColors.mutedFg,
-                    size: compact ? 28 : 36,
+                    size: compact ? 26 : 32,
                   ),
                 ),
               ),
             ),
           Padding(
-            padding: EdgeInsets.all(compact ? 10 : 14),
+            padding: EdgeInsets.fromLTRB(
+              compact ? 10 : 13,
+              compact ? 9 : 11,
+              compact ? 10 : 13,
+              compact ? 8 : 10,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(username, author),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 if (post.title.isNotEmpty)
                   Text(
                     post.title,
                     style: DevTheme.body(
-                      size: compact ? 13 : 15,
+                      size: compact ? 13 : 14,
                       w: FontWeight.w700,
                     ),
-                    maxLines: 2,
+                    maxLines: post.body.isEmpty ? 3 : 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                if (post.content.isNotEmpty) ...[
+                if (post.body.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
-                    post.content,
-                    style: DevTheme.bodySecondary(size: compact ? 11 : 12.5),
-                    maxLines: compact ? 2 : 4,
+                    post.body,
+                    style: DevTheme.bodySecondary(size: compact ? 11 : 12),
+                    maxLines: compact ? 2 : 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -309,14 +373,24 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                   const SizedBox(height: 10),
                   PostPollView(postId: post.id, initialPoll: post.poll),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: 9),
                 const Divider(color: DevColors.border, height: 1),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 _buildActions(compact),
               ],
             ),
           ),
         ],
+      ),
+    );
+
+    // En pantallas anchas la tarjeta no se estira: se centra y se limita a
+    // 760 px, que es donde el texto se lee cómodo.
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: card,
       ),
     );
   }

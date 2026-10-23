@@ -643,14 +643,44 @@ class _MobileNavItem extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.label,
-                      style: DevTheme.body(size: 14, w: FontWeight.w700),
+                    Row(
+                      children: [
+                        Text(
+                          item.label,
+                          style: DevTheme.body(size: 14, w: FontWeight.w700),
+                        ),
+                        if (item.id == ViewId.store) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DevColors.gold.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: DevColors.gold.withValues(alpha: 0.5),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              'Próximamente',
+                              style: DevTheme.body(
+                                size: 9,
+                                w: FontWeight.w700,
+                                color: DevColors.gold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    Text(
-                      item.description,
-                      style: DevTheme.body(size: 11, color: DevColors.mutedFg),
-                    ),
+                    if (item.id != ViewId.store)
+                      Text(
+                        item.description,
+                        style: DevTheme.body(size: 11, color: DevColors.mutedFg),
+                      ),
                   ],
                 ),
               ),
