@@ -1,5 +1,41 @@
 # DevPlay — Frontend Flutter 🎮
 
+## Estructura del repositorio
+
+```
+frontend-web/
+├── lib/        App Flutter (web + android): pantallas, widgets, servicios
+├── web/        Shell web, manifest PWA, iconos y binarios descargables
+├── api/        Backend FastAPI: app, alembic, scripts de seed y tests
+├── tool/       Scripts de build (releases) y servidor estático
+└── assets/     Vídeos y recursos del hero
+```
+
+### Levantar todo en local
+
+```powershell
+# API (puerto 8000)
+cd api
+python -m venv .venv
+.venv\Scripts\pip install -e .
+.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# Base de datos con datos de ejemplo
+.venv\Scripts\python scripts\seed_devplay.py
+
+# Web (puerto 8080)
+flutter run -d chrome --web-port 8080
+```
+
+### App instalable (PWA)
+
+```powershell
+flutter build web --release     # genera build/web
+python -m http.server 8081 -d build\web
+```
+Abre `http://localhost:8081` y usa "Instalar app" del navegador.
+
+
 Frontend móvil de **DevPlay** construido con **Flutter**. Reemplaza al
 antiguo frontend de Next.js: la app habla con la **API de FastAPI**, que
 es el único backend.

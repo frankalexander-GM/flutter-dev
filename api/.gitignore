@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Entorno
+.env
+.env.local
+
+# Archivos subidos por los usuarios
+media/
+
+# Alembic
+alembic/versions/*.pyc
+
+# IDE / SO
+.idea/
+.vscode/
+.DS_Store
+
+# --- Frontend Next.js (devplay-web) ---
+devplay-web/node_modules/
+devplay-web/.next/
+devplay-web/out/
+devplay-web/*.tsbuildinfo
+devplay-web/.env.local
+devplay-web/.vercel/
+.env.example
+*.example
+
+# Bases de datos locales
+*.db
+*.db-shm
+*.db-wal
+
